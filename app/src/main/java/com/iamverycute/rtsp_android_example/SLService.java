@@ -9,6 +9,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.graphics.Color;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
 import android.media.AudioAttributes;
@@ -18,7 +19,12 @@ import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.media.projection.MediaProjection;
 import android.os.IBinder;
+import android.provider.Settings;
+import android.util.Log;
+import android.view.Gravity;
 import android.view.Surface;
+import android.view.View;
+import android.view.WindowManager;
 import android.widget.RemoteViews;
 import android.widget.TextView;
 
@@ -36,9 +42,12 @@ import java.nio.ByteBuffer;
 
 public class SLService extends Service implements Runnable, ConnectCheckerRtsp, MainActivity.OnScreenRecording, AudioEncoder.AudioDataCallback {
 
+    private View floatView;
     private String rtsp_url;
     private Notification notify;
     private RemoteViews notifyView;
+    private WindowManager mWindowManager;
+    private WindowManager.LayoutParams windowLayoutParams;
 
     @Override
     public void onCreate() {
@@ -46,6 +55,21 @@ public class SLService extends Service implements Runnable, ConnectCheckerRtsp, 
         MainActivity.PutSlObj(this);
         svr = new RtspServer(this, 12345);
         rtsp_url = String.format("rtsp://%s:%s", svr.getServerIp(), svr.getPort());
+        mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        windowLayoutParams = new WindowManager.LayoutParams() {
+            {
+                width = MATCH_PARENT;
+                height = MATCH_PARENT;
+                x = 0;
+                y = 0;
+                alpha = 0;
+                gravity = Gravity.LEFT | Gravity.BOTTOM;
+                type = TYPE_APPLICATION_OVERLAY;
+                flags = FLAG_NOT_FOCUSABLE | FLAG_NOT_TOUCH_MODAL | FLAG_NOT_TOUCHABLE | FLAG_LAYOUT_NO_LIMITS;
+            }
+        };
+        floatView = new View(this);
+        floatView.setBackgroundColor(Color.RED);
         notifyView = new RemoteViews(getPackageName(), R.layout.notify);
         notifyView.setOnClickPendingIntent(R.id.tv1, PendingIntent.getActivity(getApplicationContext(), 1, new Intent(getApplicationContext(), MainActivity.class), FLAG_UPDATE_CURRENT | FLAG_IMMUTABLE));
         notify = new NotificationCompat.Builder(this, getString(R.string.channel_id)).setContentText(rtsp_url).setCustomContentView(notifyView).setWhen(System.currentTimeMillis()).setSmallIcon(android.R.drawable.presence_video_online).setVisibility(NotificationCompat.VISIBILITY_PUBLIC).setOngoing(true).build();
@@ -90,6 +114,9 @@ public class SLService extends Service implements Runnable, ConnectCheckerRtsp, 
     private Thread audioEncoderThread;
 
     private void REC_YOUR_SCREEN() {
+        if (Settings.canDrawOverlays(this)) {
+            mWindowManager.addView(floatView, windowLayoutParams);
+        }
         int width = 720;
         int height = 1280;
         MediaFormat videoFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_HEVC, width, height);
@@ -137,7 +164,10 @@ public class SLService extends Service implements Runnable, ConnectCheckerRtsp, 
         codec.start();
         while (!Thread.currentThread().isInterrupted()) {
             int index = codec.dequeueOutputBuffer(bufferInfo, 0);
-            if (index < 0) continue;
+            if (index < 0) {
+                floatView.postInvalidate();
+                continue;
+            }
             if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0) {
                 csd0Handler(codec.getOutputFormat(index).getByteBuffer("csd-0").array());
             }
@@ -156,6 +186,8 @@ public class SLService extends Service implements Runnable, ConnectCheckerRtsp, 
         if (pm != null) {
             pm.stop();
         }
+        if (floatView.isAttachedToWindow())
+            mWindowManager.removeView(floatView);
     }
 
     private void csd0Handler(byte[] csdArray) {

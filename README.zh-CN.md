@@ -15,5 +15,3 @@ Android录制屏幕画面以及内部音频并发布到RTSP流
 致谢以下开源项目作者:
 
 https://github.com/pedroSG94/RTSP-Server
-
-https://github.com/princekin-f/EasyFloat

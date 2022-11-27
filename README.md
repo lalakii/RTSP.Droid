@@ -17,5 +17,3 @@ Sample Apk: https://github.com/iamverycute/RTSP.Droid/raw/master/app/release/app
 ## Thanks:
 
 https://github.com/pedroSG94/RTSP-Server
-
-https://github.com/princekin-f/EasyFloat
