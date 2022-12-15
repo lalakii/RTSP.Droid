@@ -2,25 +2,30 @@ package com.iamverycute.rtsp_android_example;
 
 import static android.app.PendingIntent.FLAG_IMMUTABLE;
 import static android.app.PendingIntent.FLAG_UPDATE_CURRENT;
+import static android.media.AudioFormat.CHANNEL_IN_MONO;
+import static android.media.AudioFormat.ENCODING_PCM_16BIT;
 import static androidx.core.app.NotificationManagerCompat.IMPORTANCE_MIN;
 
+import android.Manifest;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.graphics.Color;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
 import android.media.AudioAttributes;
+import android.media.AudioFormat;
 import android.media.AudioPlaybackCaptureConfiguration;
+import android.media.AudioRecord;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.media.projection.MediaProjection;
 import android.os.IBinder;
 import android.provider.Settings;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.Surface;
 import android.view.View;
@@ -30,18 +35,23 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationChannelCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
-
 import com.pedro.rtsp.utils.ConnectCheckerRtsp;
 import com.pedro.rtspserver.RtspServer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class SLService extends Service implements Runnable, ConnectCheckerRtsp, MainActivity.OnScreenRecording, AudioEncoder.AudioDataCallback {
+/**
+ * @author iamverycute
+ */
 
+public class SLService extends Service implements Runnable, ConnectCheckerRtsp, MainActivity.OnRecordingEvent {
+
+    private RtspServer svr;
     private View floatView;
     private String rtsp_url;
     private Notification notify;
@@ -52,9 +62,13 @@ public class SLService extends Service implements Runnable, ConnectCheckerRtsp, 
     @Override
     public void onCreate() {
         super.onCreate();
-        MainActivity.PutSlObj(this);
         svr = new RtspServer(this, 12345);
         rtsp_url = String.format("rtsp://%s:%s", svr.getServerIp(), svr.getPort());
+        svr.setLogs(false);
+        svr.setStereo(true);
+        svr.setAuth("", "");
+        svr.startServer();
+
         mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         windowLayoutParams = new WindowManager.LayoutParams() {
             {
@@ -91,11 +105,8 @@ public class SLService extends Service implements Runnable, ConnectCheckerRtsp, 
 
     @Override
     public void Dispose() {
-        if (codecThread != null) {
-            codecThread.interrupt();
-        }
-        if (audioEncoderThread != null) {
-            audioEncoderThread.interrupt();
+        if (hevcAACEncoderThread != null) {
+            hevcAACEncoderThread.interrupt();
         }
         ShowNotify("已停止运行");
     }
@@ -106,12 +117,11 @@ public class SLService extends Service implements Runnable, ConnectCheckerRtsp, 
     }
 
     private MediaProjection pm;
-    private MediaCodec codec;
+    private MediaCodec hevcEncoder;
+    private MediaCodec aacEncoder;
     private VirtualDisplay display;
     private Surface surface;
-    private RtspServer svr;
-    private Thread codecThread;
-    private Thread audioEncoderThread;
+    private Thread hevcAACEncoderThread;
 
     private void REC_YOUR_SCREEN() {
         if (Settings.canDrawOverlays(this)) {
@@ -122,61 +132,81 @@ public class SLService extends Service implements Runnable, ConnectCheckerRtsp, 
         MediaFormat videoFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_HEVC, width, height);
         videoFormat.setInteger(MediaFormat.KEY_BITRATE_MODE, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR);
         videoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
-        videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 3);
-        videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 27);
+        videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2);
+        videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 25);
         try {
-            codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_HEVC);
+            hevcEncoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_HEVC);
         } catch (IOException ignored) {
         }
-        codec.configure(videoFormat, null, MediaCodec.CONFIGURE_FLAG_ENCODE, null);
-        surface = codec.createInputSurface();
+        hevcEncoder.configure(videoFormat, null, MediaCodec.CONFIGURE_FLAG_ENCODE, null);
+        surface = hevcEncoder.createInputSurface();
+        hevcEncoder.start();
         display = pm.createVirtualDisplay("vd-9", width, height, 1, DisplayManager.VIRTUAL_DISPLAY_FLAG_PRESENTATION, surface, null, null);
-        svr.setLogs(false);
-        svr.setStereo(false);
-        svr.setAuth("", "");
-        svr.startServer();
 
-        codecThread = new Thread(this);
-        codecThread.start();
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            int sampleRate = 32000;
+            int ENCODING = ENCODING_PCM_16BIT;
+            int channelConfig = CHANNEL_IN_MONO;
 
-        AudioPlaybackCaptureConfiguration.Builder audioConfig = new AudioPlaybackCaptureConfiguration.Builder(this.pm);
-        audioConfig.addMatchingUsage(AudioAttributes.USAGE_MEDIA);
-        audioConfig.addMatchingUsage(AudioAttributes.USAGE_GAME);
-        audioConfig.addMatchingUsage(AudioAttributes.USAGE_UNKNOWN);
-        audioConfig.addMatchingUsage(AudioAttributes.USAGE_ALARM);
-        audioConfig.addMatchingUsage(AudioAttributes.USAGE_ASSISTANT);
-        audioConfig.addMatchingUsage(AudioAttributes.USAGE_NOTIFICATION);
-        audioConfig.addMatchingUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE);
+            AudioPlaybackCaptureConfiguration audioConfig = new AudioPlaybackCaptureConfiguration.Builder(this.pm).addMatchingUsage(AudioAttributes.USAGE_MEDIA).addMatchingUsage(AudioAttributes.USAGE_GAME).addMatchingUsage(AudioAttributes.USAGE_UNKNOWN).addMatchingUsage(AudioAttributes.USAGE_ALARM).addMatchingUsage(AudioAttributes.USAGE_ASSISTANT).addMatchingUsage(AudioAttributes.USAGE_NOTIFICATION).addMatchingUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE).build();
 
-        audioEncoderThread = new AudioEncoder(this, audioConfig.build());
-        audioEncoderThread.start();
+            minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, ENCODING);
+            //if u want record mic sound. replace setAudioPlaybackCaptureConfig  to  setAudioSource(MIC)
+            audioRecord = new AudioRecord.Builder().setAudioPlaybackCaptureConfig(audioConfig).setAudioFormat(new AudioFormat.Builder().setSampleRate(sampleRate).setEncoding(ENCODING).setChannelMask(channelConfig).build()).setBufferSizeInBytes(minBufferSize).build();
+            MediaFormat audioFormat = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, sampleRate, channelConfig);
+            audioFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 4096);
+            audioFormat.setInteger(MediaFormat.KEY_BIT_RATE, 48000);
+            audioFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC);
+            try {
+                aacEncoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC);
+            } catch (IOException ignored) {
+            }
+            aacEncoder.configure(audioFormat, null, MediaCodec.CONFIGURE_FLAG_ENCODE, null);
+            aacEncoder.start();
+            audioRecord.startRecording();
+        }
+
+        hevcAACEncoderThread = new Thread(this);
+        hevcAACEncoderThread.start();
     }
 
-    @Override
-    public void OnAudio(ByteBuffer data, MediaCodec.BufferInfo info) {
-        svr.sendAudio(data, info);
-    }
+    private AudioRecord audioRecord;
+    private int minBufferSize;
 
     private final MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+    private final MediaCodec.BufferInfo audioBufferInfo = new MediaCodec.BufferInfo();
 
     @Override
     public void run() {
-        codec.start();
-        while (!Thread.currentThread().isInterrupted()) {
-            int index = codec.dequeueOutputBuffer(bufferInfo, 0);
-            if (index < 0) {
+        while (!hevcAACEncoderThread.isInterrupted()) {
+            addAACEncoder();
+            int hevcOutputBufferIndex = hevcEncoder.dequeueOutputBuffer(bufferInfo, 0);
+            if (hevcOutputBufferIndex < 0) {
                 floatView.postInvalidate();
                 continue;
             }
             if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0) {
-                csd0Handler(codec.getOutputFormat(index).getByteBuffer("csd-0").array());
+                csd0Handler(hevcEncoder.getOutputFormat(hevcOutputBufferIndex).getByteBuffer("csd-0").array());
             }
-            svr.sendVideo(codec.getOutputBuffer(index), bufferInfo);
-            codec.releaseOutputBuffer(index, false);
+            svr.sendVideo(hevcEncoder.getOutputBuffer(hevcOutputBufferIndex), bufferInfo);
+            hevcEncoder.releaseOutputBuffer(hevcOutputBufferIndex, false);
         }
-        codec.stop();
-        codec.reset();
-        codec.release();
+        releaseAll();
+    }
+
+    private void releaseAll() {
+        hevcEncoder.stop();
+        hevcEncoder.reset();
+        hevcEncoder.release();
+        if (aacEncoder != null) {
+            aacEncoder.stop();
+            aacEncoder.reset();
+            aacEncoder.release();
+        }
+        if (audioRecord != null) {
+            audioRecord.stop();
+            audioRecord.release();
+        }
         if (surface != null) {
             surface.release();
         }
@@ -186,32 +216,45 @@ public class SLService extends Service implements Runnable, ConnectCheckerRtsp, 
         if (pm != null) {
             pm.stop();
         }
-        if (floatView.isAttachedToWindow())
-            mWindowManager.removeView(floatView);
+        if (floatView.isAttachedToWindow()) mWindowManager.removeView(floatView);
     }
 
-    private void csd0Handler(byte[] csdArray) {
+    private void csd0Handler(byte[] csdBuf) {
         int segment = 0;
-        int vpsPosition = -1;
-        int spsPosition = -1;
         int ppsPosition = -1;
-        for (int i = 0; i < csdArray.length; i++) {
-            if (segment == 3 && csdArray[i] == 1) {
-                if (vpsPosition == -1) {
-                    vpsPosition = i - segment;
-                } else if (spsPosition == -1) {
-                    spsPosition = i - segment;
+        int spsPosition = -1;
+        for (int i = csdBuf.length - 1; i > -1; i--) {
+            if (segment == 3 && csdBuf[i + 4] == 1) {
+                if (ppsPosition == -1) {
+                    ppsPosition = i + 1;
                 } else {
-                    ppsPosition = i - segment;
+                    spsPosition = i + 1;
                     break;
                 }
             }
-            segment = csdArray[i] == 0 ? segment + 1 : 0;
+            segment = csdBuf[i] == 0 ? segment + 1 : 0;
         }
-        ByteBuffer vps = ByteBuffer.allocate(spsPosition).put(csdArray, 0, spsPosition);
-        ByteBuffer sps = ByteBuffer.allocate(ppsPosition - spsPosition).put(csdArray, spsPosition, ppsPosition - spsPosition);
-        ByteBuffer pps = ByteBuffer.allocate(csdArray.length - ppsPosition).put(csdArray, ppsPosition, csdArray.length - ppsPosition);
+        ByteBuffer vps = ByteBuffer.allocate(spsPosition).put(csdBuf, 0, spsPosition);
+        ByteBuffer sps = ByteBuffer.allocate(ppsPosition - spsPosition).put(csdBuf, spsPosition, ppsPosition - spsPosition);
+        ByteBuffer pps = ByteBuffer.allocate(csdBuf.length - ppsPosition).put(csdBuf, ppsPosition, csdBuf.length - ppsPosition);
         svr.setVideoInfo(sps, pps, vps);
+    }
+
+    private void addAACEncoder() {
+        if (audioRecord != null) {
+            ByteBuffer audioRawByteBuffer = ByteBuffer.allocateDirect(minBufferSize);
+            int len = audioRecord.read(audioRawByteBuffer, minBufferSize, AudioRecord.READ_NON_BLOCKING);
+            int audioInputBufferIndex = aacEncoder.dequeueInputBuffer(0);
+            if (audioInputBufferIndex > -1) {
+                ((ByteBuffer) aacEncoder.getInputBuffer(audioInputBufferIndex).clear()).put(audioRawByteBuffer);
+                aacEncoder.queueInputBuffer(audioInputBufferIndex, 0, len, System.nanoTime() / 1000L, 0);
+                int audioOutputBufferIndex;
+                while ((audioOutputBufferIndex = aacEncoder.dequeueOutputBuffer(audioBufferInfo, 0)) > -1) {
+                    this.svr.sendAudio(aacEncoder.getOutputBuffer(audioOutputBufferIndex), audioBufferInfo);
+                    aacEncoder.releaseOutputBuffer(audioOutputBufferIndex, false);
+                }
+            }
+        }
     }
 
     @Override
@@ -252,6 +295,6 @@ public class SLService extends Service implements Runnable, ConnectCheckerRtsp, 
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        return null;
+        return new SLBinder(this);
     }
 }

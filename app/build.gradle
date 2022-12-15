@@ -33,4 +33,5 @@ dependencies {
     implementation 'com.github.pedroSG94:RTSP-Server:+'
     implementation 'com.github.pedroSG94.rtmp-rtsp-stream-client-java:rtplibrary:+'
     implementation 'androidx.appcompat:appcompat:1.7.0-alpha01'
+
 }

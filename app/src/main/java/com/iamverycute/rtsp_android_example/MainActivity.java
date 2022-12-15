@@ -2,14 +2,17 @@ package com.iamverycute.rtsp_android_example;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.HandlerThread;
+import android.os.IBinder;
 import android.provider.Settings;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -28,13 +31,14 @@ import androidx.core.app.ActivityCompat;
 
 import java.net.URISyntaxException;
 
-public class MainActivity extends AppCompatActivity implements ActivityResultCallback<ActivityResult>, CompoundButton.OnCheckedChangeListener {
+public class MainActivity extends AppCompatActivity implements ActivityResultCallback<ActivityResult>, CompoundButton.OnCheckedChangeListener, ServiceConnection {
 
     private Handler mHandler;
+    private OnRecordingEvent event;
     private SwitchCompat switchButton;
-    public static OnScreenRecording slI;
     private MediaProjectionManager manager;
     private ActivityResultLauncher<Intent> startActivityForResult;
+
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -51,9 +55,7 @@ public class MainActivity extends AppCompatActivity implements ActivityResultCal
         }
         manager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
         startActivityForResult = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), this);
-        HandlerThread hThread = new HandlerThread("rtsp_droid");
-        hThread.start();
-        mHandler = new Handler(hThread.getLooper());
+        mHandler = new Handler(this.getMainLooper());
         switchButton = findViewById(R.id.checkbox);
         switchButton.setOnCheckedChangeListener(this);
     }
@@ -62,27 +64,30 @@ public class MainActivity extends AppCompatActivity implements ActivityResultCal
     public void onActivityResult(ActivityResult result) {
         int resultCode = result.getResultCode();
         if (resultCode == Activity.RESULT_OK) {
-            slI.Success(manager.getMediaProjection(resultCode, result.getData()), findViewById(R.id.rtsp_url));
+            event.Success(manager.getMediaProjection(resultCode, result.getData()), findViewById(R.id.rtsp_url));
         } else {
             switchButton.setChecked(false);
         }
     }
 
-    public static void PutSlObj(OnScreenRecording _slI) {
-        slI = _slI;
+    @Override
+    public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+        if (b) {
+            Intent serviceIntent = new Intent(this, SLService.class);
+            startForegroundService(serviceIntent);
+            bindService(serviceIntent, this, Context.BIND_AUTO_CREATE);
+            mHandler.postDelayed(() -> {
+                event.Granting();
+                startActivityForResult.launch(manager.createScreenCaptureIntent());
+            }, 1000);
+        } else {
+            event.Dispose();
+        }
     }
 
     @Override
-    public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
-        if (!b) {
-            slI.Dispose();
-            return;
-        }
-        startForegroundService(new Intent(this, SLService.class));
-        mHandler.postDelayed(() -> {
-            slI.Granting();
-            startActivityForResult.launch(manager.createScreenCaptureIntent());
-        }, 1000);
+    public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+        event = ((SLBinder) iBinder).getContext();
     }
 
     @Override
@@ -102,7 +107,12 @@ public class MainActivity extends AppCompatActivity implements ActivityResultCal
         return super.onCreateOptionsMenu(menu);
     }
 
-    public interface OnScreenRecording {
+    @Override
+    public void onServiceDisconnected(ComponentName componentName) {
+
+    }
+
+    public interface OnRecordingEvent {
         void Success(MediaProjection pm, TextView tv);
 
         void Granting();
