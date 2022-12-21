@@ -1,6 +1,8 @@
 <resources>
     <string name="app_name">RTSP.Droid</string>
     <string name="channel_id">RTSP_Stream_Notify</string>
+    <string name="granting">请授予屏幕录制权限</string>
+    <string name="stopped">已停止运行</string>
     <string name="opensource">开源许可</string>
     <string name="project_url">https://github.com/iamverycute/RTSP.Droid</string>
 </resources>

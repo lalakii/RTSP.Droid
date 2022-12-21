@@ -4,7 +4,7 @@ import static android.app.PendingIntent.FLAG_IMMUTABLE;
 import static android.app.PendingIntent.FLAG_UPDATE_CURRENT;
 import static android.media.AudioFormat.CHANNEL_IN_MONO;
 import static android.media.AudioFormat.ENCODING_PCM_16BIT;
-import static androidx.core.app.NotificationManagerCompat.IMPORTANCE_MIN;
+import static androidx.core.app.NotificationManagerCompat.IMPORTANCE_HIGH;
 
 import android.Manifest;
 import android.app.Notification;
@@ -24,6 +24,7 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.media.projection.MediaProjection;
+import android.media.projection.MediaProjectionManager;
 import android.os.IBinder;
 import android.provider.Settings;
 import android.view.Gravity;
@@ -57,11 +58,13 @@ public class SLService extends Service implements Runnable, ConnectCheckerRtsp, 
     private Notification notify;
     private RemoteViews notifyView;
     private WindowManager mWindowManager;
-    private WindowManager.LayoutParams windowLayoutParams;
+    private MediaProjectionManager manager;
+    private WindowManager.LayoutParams layoutParams;
 
     @Override
     public void onCreate() {
         super.onCreate();
+        manager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
         svr = new RtspServer(this, 12345);
         rtsp_url = String.format("rtsp://%s:%s", svr.getServerIp(), svr.getPort());
         svr.setLogs(false);
@@ -70,7 +73,7 @@ public class SLService extends Service implements Runnable, ConnectCheckerRtsp, 
         svr.startServer();
 
         mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-        windowLayoutParams = new WindowManager.LayoutParams() {
+        layoutParams = new WindowManager.LayoutParams() {
             {
                 width = MATCH_PARENT;
                 height = MATCH_PARENT;
@@ -87,20 +90,21 @@ public class SLService extends Service implements Runnable, ConnectCheckerRtsp, 
         notifyView = new RemoteViews(getPackageName(), R.layout.notify);
         notifyView.setOnClickPendingIntent(R.id.tv1, PendingIntent.getActivity(getApplicationContext(), 1, new Intent(getApplicationContext(), MainActivity.class), FLAG_UPDATE_CURRENT | FLAG_IMMUTABLE));
         notify = new NotificationCompat.Builder(this, getString(R.string.channel_id)).setContentText(rtsp_url).setCustomContentView(notifyView).setWhen(System.currentTimeMillis()).setSmallIcon(android.R.drawable.presence_video_online).setVisibility(NotificationCompat.VISIBILITY_PUBLIC).setOngoing(true).build();
-        NotificationManagerCompat.from(this).createNotificationChannel(new NotificationChannelCompat.Builder(notify.getChannelId(), IMPORTANCE_MIN).setName(getString(R.string.app_name)).setDescription(getString(R.string.app_name)).setSound(null, null).setLightsEnabled(false).setShowBadge(false).setVibrationEnabled(false).build());
+        NotificationManagerCompat.from(this).createNotificationChannel(new NotificationChannelCompat.Builder(notify.getChannelId(), IMPORTANCE_HIGH).setName(getString(R.string.app_name)).setDescription(getString(R.string.app_name)).setSound(null, null).setLightsEnabled(false).setShowBadge(false).setVibrationEnabled(false).build());
         startForeground(1, notify, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
     }
 
-    public void Success(MediaProjection pm, TextView tv) {
-        this.pm = pm;
+    public void Success(int resultCode,Intent data, TextView tv) {
+        this.pm = manager.getMediaProjection(resultCode,data);
         tv.setText(rtsp_url);
         ShowNotify(rtsp_url);
         REC_YOUR_SCREEN();
     }
 
     @Override
-    public void Granting() {
-        ShowNotify("请授予屏幕录制权限");
+    public Intent Granting() {
+        ShowNotify(getString(R.string.granting));
+        return manager.createScreenCaptureIntent();
     }
 
     @Override
@@ -108,7 +112,7 @@ public class SLService extends Service implements Runnable, ConnectCheckerRtsp, 
         if (hevcAACEncoderThread != null) {
             hevcAACEncoderThread.interrupt();
         }
-        ShowNotify("已停止运行");
+        ShowNotify(getString(R.string.stopped));
     }
 
     private void ShowNotify(String text) {
@@ -125,14 +129,14 @@ public class SLService extends Service implements Runnable, ConnectCheckerRtsp, 
 
     private void REC_YOUR_SCREEN() {
         if (Settings.canDrawOverlays(this)) {
-            mWindowManager.addView(floatView, windowLayoutParams);
+            mWindowManager.addView(floatView, layoutParams);
         }
         int width = 720;
         int height = 1280;
         MediaFormat videoFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_HEVC, width, height);
         videoFormat.setInteger(MediaFormat.KEY_BITRATE_MODE, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR);
         videoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
-        videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2);
+        videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
         videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 25);
         try {
             hevcEncoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_HEVC);

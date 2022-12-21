@@ -6,8 +6,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.media.projection.MediaProjection;
-import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -36,7 +34,6 @@ public class MainActivity extends AppCompatActivity implements ActivityResultCal
     private Handler mHandler;
     private OnRecordingEvent event;
     private SwitchCompat switchButton;
-    private MediaProjectionManager manager;
     private ActivityResultLauncher<Intent> startActivityForResult;
 
 
@@ -53,7 +50,6 @@ public class MainActivity extends AppCompatActivity implements ActivityResultCal
         if (!Settings.canDrawOverlays(this)) {
             startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
         }
-        manager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
         startActivityForResult = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), this);
         mHandler = new Handler(this.getMainLooper());
         switchButton = findViewById(R.id.checkbox);
@@ -64,7 +60,7 @@ public class MainActivity extends AppCompatActivity implements ActivityResultCal
     public void onActivityResult(ActivityResult result) {
         int resultCode = result.getResultCode();
         if (resultCode == Activity.RESULT_OK) {
-            event.Success(manager.getMediaProjection(resultCode, result.getData()), findViewById(R.id.rtsp_url));
+            event.Success(resultCode, result.getData(), findViewById(R.id.rtsp_url));
         } else {
             switchButton.setChecked(false);
         }
@@ -73,13 +69,8 @@ public class MainActivity extends AppCompatActivity implements ActivityResultCal
     @Override
     public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
         if (b) {
-            Intent serviceIntent = new Intent(this, SLService.class);
-            startForegroundService(serviceIntent);
-            bindService(serviceIntent, this, Context.BIND_AUTO_CREATE);
-            mHandler.postDelayed(() -> {
-                event.Granting();
-                startActivityForResult.launch(manager.createScreenCaptureIntent());
-            }, 1000);
+            bindService(new Intent(this, SLService.class), this, Context.BIND_AUTO_CREATE);
+            mHandler.postDelayed(() -> startActivityForResult.launch(event.Granting()), 1000);
         } else {
             event.Dispose();
         }
@@ -113,9 +104,9 @@ public class MainActivity extends AppCompatActivity implements ActivityResultCal
     }
 
     public interface OnRecordingEvent {
-        void Success(MediaProjection pm, TextView tv);
+        void Success(int resultCode, Intent data, TextView tv);
 
-        void Granting();
+        Intent Granting();
 
         void Dispose();
     }
