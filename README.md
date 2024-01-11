@@ -5,7 +5,7 @@ Android recording screen and internal audio and publishing to RTSP stream (H.265
 
 **(Recording internal audio is only available for APPs with open audio recording interface)**
 
-[中文说明](./README_CN.md)
+[中文说明](./README_zh_CN.md)
 
 ![image](./example/Demo.gif)
 
