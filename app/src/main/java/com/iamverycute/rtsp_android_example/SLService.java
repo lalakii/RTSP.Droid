@@ -10,6 +10,7 @@ import android.Manifest;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
@@ -127,7 +128,11 @@ public class SLService extends Service implements Runnable, ConnectChecker, Main
 
     private void ShowNotify(String text) {
         notifyView.setTextViewText(R.id.tv1, text);
-        startForeground(1, notify, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
+        if (checkSelfPermission(Manifest.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION) == PackageManager.PERMISSION_GRANTED)
+            try {
+                startForeground(1, notify, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
+            } catch (SecurityException ignored) {
+            }
     }
 
     private MediaProjection pm;
@@ -268,7 +273,7 @@ public class SLService extends Service implements Runnable, ConnectChecker, Main
             if (audioInputBufferIndex > -1) {
                 ByteBuffer aacEncoderBuffer = aacEncoder.getInputBuffer(audioInputBufferIndex);
                 if (aacEncoderBuffer != null) {
-                    ((ByteBuffer)aacEncoderBuffer.clear()).put(audioRawByteBuffer);
+                    ((ByteBuffer) aacEncoderBuffer.clear()).put(audioRawByteBuffer);
                 }
                 aacEncoder.queueInputBuffer(audioInputBufferIndex, 0, len, System.nanoTime() / 1000L, 0);
                 int audioOutputBufferIndex;

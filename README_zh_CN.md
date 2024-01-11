@@ -1,17 +1,19 @@
 # RTSP.Droid
-![image](./app/src/main/res/drawable/rtsp_droid.png)
 
-Android录制屏幕画面以及内部音频并发布到RTSP流
+![image](https://raw.githubusercontent.com/lalakii/RTSP.Droid/master/app/src/main/res/drawable/rtsp_droid.png)
+
+**[中文说明](README_zh_CN.md)**
+
+***安卓录制屏幕画面，以及内部音频并发布到RTSP流 (H.265/AAC)***
 
 **(录制内部音频仅适用于开放音频录制接口的APP)**
 
 ![image](./example/Demo.gif)
 
-已在Android 14或更高版本设备测试
+在 Android 14 设备测试一切正常
 
-演示APP: https://github.com/lalakii/RTSP.Droid/releases
+演示APP: [下载](https://github.com/lalakii/RTSP.Droid/releases/)
 
-
-致谢以下开源项目作者:
+## Thanks
 
 https://github.com/pedroSG94/RTSP-Server

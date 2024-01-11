@@ -17,6 +17,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.CompoundButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultCallback;
@@ -46,7 +47,7 @@ public class MainActivity extends AppCompatActivity implements ActivityResultCal
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
         mpm = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
-        String[] permissions = new String[]{Manifest.permission.POST_NOTIFICATIONS,Manifest.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION, Manifest.permission.RECORD_AUDIO};
+        String[] permissions = new String[]{Manifest.permission.POST_NOTIFICATIONS, Manifest.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION, Manifest.permission.RECORD_AUDIO};
         ActivityCompat.requestPermissions(this, Arrays.stream(permissions).filter(Objects::nonNull)
                 .toArray(String[]::new), 0);
         if (!Settings.canDrawOverlays(this)) {
@@ -63,7 +64,7 @@ public class MainActivity extends AppCompatActivity implements ActivityResultCal
         int resultCode = result.getResultCode();
         if (resultCode == Activity.RESULT_OK) {
             bindService(new Intent(this, SLService.class), this, Context.BIND_AUTO_CREATE);
-            mHandler.postDelayed(() -> event.StartRec(mpm,mHandler, resultCode, result.getData(), findViewById(R.id.rtsp_url)), 1000);
+            mHandler.postDelayed(() -> event.StartRec(mpm, mHandler, resultCode, result.getData(), findViewById(R.id.rtsp_url)), 1000);
         } else {
             switchButton.setChecked(false);
         }
@@ -74,7 +75,11 @@ public class MainActivity extends AppCompatActivity implements ActivityResultCal
         if (b) {
             startActivityForResult.launch(mpm.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay()));
         } else {
-            event.Dispose();
+            if (event != null) {
+                event.Dispose();
+            } else {
+                Toast.makeText(this, R.string.granting, Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
@@ -106,7 +111,7 @@ public class MainActivity extends AppCompatActivity implements ActivityResultCal
     }
 
     public interface OnRecordingEvent {
-        void StartRec(MediaProjectionManager mpm,Handler mHandler, int resultCode, Intent data, TextView tv);
+        void StartRec(MediaProjectionManager mpm, Handler mHandler, int resultCode, Intent data, TextView tv);
 
         void Dispose();
     }
