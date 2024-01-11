@@ -25,6 +25,7 @@ import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
+import android.os.Handler;
 import android.os.IBinder;
 import android.provider.Settings;
 import android.view.Gravity;
@@ -40,7 +41,8 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationChannelCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
-import com.pedro.rtsp.utils.ConnectCheckerRtsp;
+
+import com.pedro.common.ConnectChecker;
 import com.pedro.rtspserver.RtspServer;
 
 import java.io.IOException;
@@ -50,7 +52,7 @@ import java.nio.ByteBuffer;
  * @author iamverycute
  */
 
-public class SLService extends Service implements Runnable, ConnectCheckerRtsp, MainActivity.OnRecordingEvent {
+public class SLService extends Service implements Runnable, ConnectChecker, MainActivity.OnRecordingEvent {
 
     private RtspServer svr;
     private View floatView;
@@ -58,17 +60,15 @@ public class SLService extends Service implements Runnable, ConnectCheckerRtsp, 
     private Notification notify;
     private RemoteViews notifyView;
     private WindowManager mWindowManager;
-    private MediaProjectionManager manager;
     private WindowManager.LayoutParams layoutParams;
 
     @Override
     public void onCreate() {
         super.onCreate();
-        manager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
         svr = new RtspServer(this, 12345);
         rtsp_url = String.format("rtsp://%s:%s", svr.getServerIp(), svr.getPort());
         svr.setLogs(false);
-        svr.setStereo(true);
+        svr.setAudioInfo(32000, true);
         svr.setAuth("", "");
         svr.startServer();
 
@@ -94,17 +94,27 @@ public class SLService extends Service implements Runnable, ConnectCheckerRtsp, 
         startForeground(1, notify, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
     }
 
-    public void Success(int resultCode,Intent data, TextView tv) {
-        this.pm = manager.getMediaProjection(resultCode,data);
+    public void StartRec(MediaProjectionManager mpm, Handler mHandler, int resultCode, Intent data, TextView tv) {
+        this.pm = mpm.getMediaProjection(resultCode, data);
+        this.pm.registerCallback(new MediaProjection.Callback() {
+            @Override
+            public void onStop() {
+                super.onStop();
+            }
+
+            @Override
+            public void onCapturedContentResize(int width, int height) {
+                super.onCapturedContentResize(width, height);
+            }
+
+            @Override
+            public void onCapturedContentVisibilityChanged(boolean isVisible) {
+                super.onCapturedContentVisibilityChanged(isVisible);
+            }
+        }, mHandler);
         tv.setText(rtsp_url);
         ShowNotify(rtsp_url);
         REC_YOUR_SCREEN();
-    }
-
-    @Override
-    public Intent Granting() {
-        ShowNotify(getString(R.string.granting));
-        return manager.createScreenCaptureIntent();
     }
 
     @Override
@@ -190,9 +200,15 @@ public class SLService extends Service implements Runnable, ConnectCheckerRtsp, 
                 continue;
             }
             if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0) {
-                csd0Handler(hevcEncoder.getOutputFormat(hevcOutputBufferIndex).getByteBuffer("csd-0").array());
+                ByteBuffer formatBuffer = hevcEncoder.getOutputFormat(hevcOutputBufferIndex).getByteBuffer("csd-0");
+                if (formatBuffer != null) {
+                    csd0Handler(formatBuffer.array());
+                }
             }
-            svr.sendVideo(hevcEncoder.getOutputBuffer(hevcOutputBufferIndex), bufferInfo);
+            ByteBuffer sendBuffer = hevcEncoder.getOutputBuffer(hevcOutputBufferIndex);
+            if (sendBuffer != null) {
+                svr.sendVideo(sendBuffer, bufferInfo);
+            }
             hevcEncoder.releaseOutputBuffer(hevcOutputBufferIndex, false);
         }
         releaseAll();
@@ -250,55 +266,61 @@ public class SLService extends Service implements Runnable, ConnectCheckerRtsp, 
             int len = audioRecord.read(audioRawByteBuffer, minBufferSize, AudioRecord.READ_NON_BLOCKING);
             int audioInputBufferIndex = aacEncoder.dequeueInputBuffer(0);
             if (audioInputBufferIndex > -1) {
-                ((ByteBuffer) aacEncoder.getInputBuffer(audioInputBufferIndex).clear()).put(audioRawByteBuffer);
+                ByteBuffer aacEncoderBuffer = aacEncoder.getInputBuffer(audioInputBufferIndex);
+                if (aacEncoderBuffer != null) {
+                    ((ByteBuffer)aacEncoderBuffer.clear()).put(audioRawByteBuffer);
+                }
                 aacEncoder.queueInputBuffer(audioInputBufferIndex, 0, len, System.nanoTime() / 1000L, 0);
                 int audioOutputBufferIndex;
                 while ((audioOutputBufferIndex = aacEncoder.dequeueOutputBuffer(audioBufferInfo, 0)) > -1) {
-                    this.svr.sendAudio(aacEncoder.getOutputBuffer(audioOutputBufferIndex), audioBufferInfo);
+                    ByteBuffer audioBuffer = aacEncoder.getOutputBuffer(audioOutputBufferIndex);
+                    if (audioBuffer != null) {
+                        this.svr.sendAudio(audioBuffer, audioBufferInfo);
+                    }
                     aacEncoder.releaseOutputBuffer(audioOutputBufferIndex, false);
                 }
             }
         }
     }
 
-    @Override
-    public void onAuthErrorRtsp() {
-
-    }
-
-    @Override
-    public void onAuthSuccessRtsp() {
-
-    }
-
-    @Override
-    public void onConnectionFailedRtsp(@NonNull String s) {
-
-    }
-
-    @Override
-    public void onConnectionStartedRtsp(@NonNull String s) {
-
-    }
-
-    @Override
-    public void onConnectionSuccessRtsp() {
-
-    }
-
-    @Override
-    public void onDisconnectRtsp() {
-
-    }
-
-    @Override
-    public void onNewBitrateRtsp(long l) {
-
-    }
-
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
         return new SLBinder(this);
+    }
+
+    @Override
+    public void onAuthError() {
+
+    }
+
+    @Override
+    public void onAuthSuccess() {
+
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull String s) {
+
+    }
+
+    @Override
+    public void onConnectionStarted(@NonNull String s) {
+
+    }
+
+    @Override
+    public void onConnectionSuccess() {
+
+    }
+
+    @Override
+    public void onDisconnect() {
+
+    }
+
+    @Override
+    public void onNewBitrate(long l) {
+
     }
 }

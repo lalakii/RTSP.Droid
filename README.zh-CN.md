@@ -7,9 +7,9 @@ Android录制屏幕画面以及内部音频并发布到RTSP流
 
 ![image](./example/Demo.gif)
 
-已在Android 10或更高版本设备测试
+已在Android 14或更高版本设备测试
 
-演示APP: https://github.com/iamverycute/RTSP.Droid/raw/master/app/release/app-release.apk
+演示APP: https://github.com/lalakii/RTSP.Droid/releases
 
 
 致谢以下开源项目作者:

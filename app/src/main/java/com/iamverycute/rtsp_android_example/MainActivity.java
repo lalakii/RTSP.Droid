@@ -6,8 +6,9 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.media.projection.MediaProjectionConfig;
+import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -28,6 +29,8 @@ import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.app.ActivityCompat;
 
 import java.net.URISyntaxException;
+import java.util.Arrays;
+import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity implements ActivityResultCallback<ActivityResult>, CompoundButton.OnCheckedChangeListener, ServiceConnection {
 
@@ -35,18 +38,17 @@ public class MainActivity extends AppCompatActivity implements ActivityResultCal
     private OnRecordingEvent event;
     private SwitchCompat switchButton;
     private ActivityResultLauncher<Intent> startActivityForResult;
+    public MediaProjectionManager mpm;
 
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
-        String[] permissions = new String[2];
-        permissions[0] = Manifest.permission.RECORD_AUDIO;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissions[1] = Manifest.permission.POST_NOTIFICATIONS;
-        }
-        ActivityCompat.requestPermissions(this, permissions, 0);
+        mpm = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
+        String[] permissions = new String[]{Manifest.permission.POST_NOTIFICATIONS,Manifest.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION, Manifest.permission.RECORD_AUDIO};
+        ActivityCompat.requestPermissions(this, Arrays.stream(permissions).filter(Objects::nonNull)
+                .toArray(String[]::new), 0);
         if (!Settings.canDrawOverlays(this)) {
             startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
         }
@@ -60,7 +62,8 @@ public class MainActivity extends AppCompatActivity implements ActivityResultCal
     public void onActivityResult(ActivityResult result) {
         int resultCode = result.getResultCode();
         if (resultCode == Activity.RESULT_OK) {
-            event.Success(resultCode, result.getData(), findViewById(R.id.rtsp_url));
+            bindService(new Intent(this, SLService.class), this, Context.BIND_AUTO_CREATE);
+            mHandler.postDelayed(() -> event.StartRec(mpm,mHandler, resultCode, result.getData(), findViewById(R.id.rtsp_url)), 1000);
         } else {
             switchButton.setChecked(false);
         }
@@ -69,8 +72,7 @@ public class MainActivity extends AppCompatActivity implements ActivityResultCal
     @Override
     public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
         if (b) {
-            bindService(new Intent(this, SLService.class), this, Context.BIND_AUTO_CREATE);
-            mHandler.postDelayed(() -> startActivityForResult.launch(event.Granting()), 1000);
+            startActivityForResult.launch(mpm.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay()));
         } else {
             event.Dispose();
         }
@@ -104,9 +106,7 @@ public class MainActivity extends AppCompatActivity implements ActivityResultCal
     }
 
     public interface OnRecordingEvent {
-        void Success(int resultCode, Intent data, TextView tv);
-
-        Intent Granting();
+        void StartRec(MediaProjectionManager mpm,Handler mHandler, int resultCode, Intent data, TextView tv);
 
         void Dispose();
     }

@@ -9,9 +9,9 @@ Android recording screen and internal audio and publishing to RTSP stream (H.265
 
 ![image](./example/Demo.gif)
 
-Test On API 29+ (Android 10)
+Test On API 34+ (Android 14)
 
-Sample Apk: https://github.com/iamverycute/RTSP.Droid/raw/master/app/release/app-release.apk
+Sample Apk: https://github.com/lalakii/RTSP.Droid/releases
 
 
 ## Thanks:
