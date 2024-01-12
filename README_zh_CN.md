@@ -2,7 +2,7 @@
 
 ![image](https://raw.githubusercontent.com/lalakii/RTSP.Droid/master/app/src/main/res/drawable/rtsp_droid.png)
 
-**[Englist](README.md)**
+**[English](README.md)**
 
 ***安卓录制屏幕画面，以及内部音频并发布到RTSP流 (H.265/AAC)***
 
