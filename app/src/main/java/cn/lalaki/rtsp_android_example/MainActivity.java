@@ -1,9 +1,11 @@
-package com.iamverycute.rtsp_android_example;
+package cn.lalaki.rtsp_android_example;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.media.projection.MediaProjectionConfig;
@@ -33,30 +35,33 @@ import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Objects;
 
-public class MainActivity extends AppCompatActivity implements ActivityResultCallback<ActivityResult>, CompoundButton.OnCheckedChangeListener, ServiceConnection {
+public class MainActivity extends AppCompatActivity implements DialogInterface.OnClickListener, ActivityResultCallback<ActivityResult>, CompoundButton.OnCheckedChangeListener, ServiceConnection {
 
     private Handler mHandler;
     private OnRecordingEvent event;
-    private SwitchCompat switchButton;
+    private SwitchCompat mSwitchCompat;
     private ActivityResultLauncher<Intent> startActivityForResult;
-    public MediaProjectionManager mpm;
-
+    public MediaProjectionManager mMediaProjectionManager;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
-        mpm = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
+        mMediaProjectionManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
         String[] permissions = new String[]{Manifest.permission.POST_NOTIFICATIONS, Manifest.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION, Manifest.permission.RECORD_AUDIO};
         ActivityCompat.requestPermissions(this, Arrays.stream(permissions).filter(Objects::nonNull)
                 .toArray(String[]::new), 0);
         if (!Settings.canDrawOverlays(this)) {
-            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
+            AlertDialog dialog = new AlertDialog.Builder(this).setPositiveButton(R.string.confirm, this)
+                    .setNegativeButton(R.string.cancel, this).create();
+            dialog.setTitle(R.string.float_title);
+            dialog.setMessage(getString(R.string.float_permission));
+            dialog.show();
         }
         startActivityForResult = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), this);
         mHandler = new Handler(this.getMainLooper());
-        switchButton = findViewById(R.id.checkbox);
-        switchButton.setOnCheckedChangeListener(this);
+        mSwitchCompat = findViewById(R.id.checkbox);
+        mSwitchCompat.setOnCheckedChangeListener(this);
     }
 
     @Override
@@ -64,16 +69,17 @@ public class MainActivity extends AppCompatActivity implements ActivityResultCal
         int resultCode = result.getResultCode();
         if (resultCode == Activity.RESULT_OK) {
             bindService(new Intent(this, SLService.class), this, Context.BIND_AUTO_CREATE);
-            mHandler.postDelayed(() -> event.StartRec(mpm, mHandler, resultCode, result.getData(), findViewById(R.id.rtsp_url)), 1000);
+            mHandler.postDelayed(() -> event.StartRec(mMediaProjectionManager, mHandler, resultCode, result.getData(), findViewById(R.id.rtsp_url)), 1000);
         } else {
-            switchButton.setChecked(false);
+            mSwitchCompat.setChecked(false);
         }
     }
 
     @Override
     public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+        mSwitchCompat.setText(b ? R.string.switch_text_stop : R.string.switch_text);
         if (b) {
-            startActivityForResult.launch(mpm.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay()));
+            startActivityForResult.launch(mMediaProjectionManager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay()));
         } else {
             if (event != null) {
                 event.Dispose();
@@ -101,7 +107,7 @@ public class MainActivity extends AppCompatActivity implements ActivityResultCal
 
     @Override
     public boolean onCreateOptionsMenu(@NonNull Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_top, menu);
+        getMenuInflater().inflate(R.menu.menu1, menu);
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -110,8 +116,15 @@ public class MainActivity extends AppCompatActivity implements ActivityResultCal
 
     }
 
+    @Override
+    public void onClick(DialogInterface dialog, int which) {
+        if (AlertDialog.BUTTON_POSITIVE == which) {
+            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
+        }
+    }
+
     public interface OnRecordingEvent {
-        void StartRec(MediaProjectionManager mpm, Handler mHandler, int resultCode, Intent data, TextView tv);
+        void StartRec(MediaProjectionManager mMediaProjectionManager, Handler mHandler, int resultCode, Intent data, TextView tv);
 
         void Dispose();
     }

@@ -1,25 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/tips"
+        android:textSize="24sp"
+        tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
+
+    <TextView
+        android:id="@+id/rtsp_url"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:gravity="center"
+        android:textColor="@android:color/holo_green_dark"
+        android:textIsSelectable="true"
+        android:textSize="24sp"
+        tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
 
     <androidx.appcompat.widget.SwitchCompat
         android:id="@+id/checkbox"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:scaleX="2"
-        android:scaleY="2" />
+        android:minHeight="48dp"
+        android:text="@string/switch_text" />
 
-    <TextView
-        android:id="@+id/rtsp_url"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_above="@+id/checkbox"
-        android:layout_marginBottom="50dp"
-        android:gravity="center"
-        android:textIsSelectable="true"
-        android:textSize="32sp"
-        tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
-</RelativeLayout>
+</LinearLayout>
