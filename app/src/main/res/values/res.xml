@@ -9,9 +9,16 @@
     <string name="switch_text_stop">停止服务</string>
     <string name="confirm">去设置</string>
     <string name="cancel">暂时不要</string>
+    <string name="audio_type">选择一个音频来源</string>
+    <string name="audio_system">系统内部</string>
+    <string name="audio_mic">麦克风</string>
+    <string name="logs">日志输出:</string>
+    <string name="copy">复制地址</string>
     <string name="float_title">请授予悬浮窗权限</string>
-    <string name="tips">你可以使用VLC、MXPlayer播放器或者ffplay命令来播放RTSP流。</string>
-    <string name="float_permission">为了应用更好的运行，建议前往设置App授予悬浮窗权限。\n\n此权限不是必须的，不授予与此权限，应用依然能运行。</string>
+    <string name="copy_ok">已复制</string>
+    <string name="separator">|</string>
+    <string name="tips">你可以使用VLC、MXPlayer播放器或者ffmpeg里面的ffplay命令来播放RTSP流。</string>
+    <string name="float_permission">为了应用更好的运行，建议前往设置App授予悬浮窗权限。\n\n此权限不是必须的，未授予与此权限，应用依然能运行。</string>
 
     <style name="Custom" parent="@style/Theme.AppCompat.Light">
         <item name="actionMenuTextColor">@android:color/holo_blue_dark</item>

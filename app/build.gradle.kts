@@ -9,21 +9,17 @@ android {
     compileSdk = 35
     defaultConfig {
         applicationId = packageName
-        minSdk = 34
+        minSdk = 33
         targetSdk = 35
-        versionCode = 3
-        versionName = "3.0"
-        ndk {
-            //noinspection ChromeOsAbiSupport
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
-        }
+        versionCode = 5
+        versionName = "5.0"
     }
     signingConfigs {
         create("release") {
             storeFile = file("D:\\imoe.jks")
             keyAlias = System.getenv("MY_PRIVATE_EMAIL")
-            storePassword = System.getenv("mystorepass")
             keyPassword = System.getenv("mystorepass2")
+            storePassword = System.getenv("mystorepass")
         }
     }
     buildTypes {
@@ -47,11 +43,15 @@ android {
         includeInApk = false
         includeInBundle = false
     }
-    ndkVersion = "29.0.13113456 rc1"
+    kotlinOptions {
+        jvmTarget = "21"
+    }
 }
 dependencies {
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("com.github.zcweng:switch-button:0.0.3@aar")
     //noinspection GradleDependency
     implementation("com.github.pedroSG94.RootEncoder:library:2.3.5")
+    //noinspection GradleDependency
     implementation("com.github.pedroSG94:RTSP-Server:1.2.1")
-    implementation("androidx.appcompat:appcompat:1.7.0")
 }
