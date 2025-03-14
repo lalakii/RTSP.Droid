@@ -1,39 +1,109 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="5dp">
 
-    <LinearLayout
+    <ir.programmerplus.groupbox.GroupBoxLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:minHeight="48dp"
-        android:orientation="horizontal">
+        android:layout_margin="5dp"
+        android:layoutDirection="ltr"
+        android:padding="11dp"
+        app:borderColor="@android:color/darker_gray"
+        app:borderCornerRadius="8dp"
+        app:borderStrokeWidth="2.2dp"
+        app:labelText="@string/tips_title"
+        app:labelTextSize="15dp">
 
         <TextView
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
             android:layout_weight="1"
-            android:gravity="center"
             android:text="@string/tips"
             tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
 
-        <TextView
+    </ir.programmerplus.groupbox.GroupBoxLayout>
+
+    <ir.programmerplus.groupbox.GroupBoxLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:layoutDirection="ltr"
+        android:padding="5dp"
+        app:borderColor="@android:color/darker_gray"
+        app:borderCornerRadius="8dp"
+        app:borderStrokeWidth="2.2dp"
+        app:labelText="@string/audio_type"
+        app:labelTextSize="15dp">
+
+        <RadioGroup
             android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:paddingStart="4dp"
-            android:paddingEnd="4dp"
-            android:scaleY="6"
-            android:text="@string/separator" />
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp">
+
+            <RadioButton
+                android:id="@+id/audio_system"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:text="@string/audio_system"
+                tools:ignore="TouchTargetSizeCheck" />
+
+            <RadioButton
+                android:id="@+id/audio_mic"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/audio_mic"
+                tools:ignore="TouchTargetSizeCheck" />
+        </RadioGroup>
+
+    </ir.programmerplus.groupbox.GroupBoxLayout>
+
+    <ir.programmerplus.groupbox.GroupBoxLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:layoutDirection="ltr"
+        android:padding="11dp"
+        app:borderColor="@android:color/darker_gray"
+        app:borderCornerRadius="8dp"
+        app:borderStrokeWidth="2.2dp"
+        app:labelText="@string/publish"
+        app:labelTextSize="15dp">
+        <TextView
+            android:id="@+id/rtsp_url"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="5dp"
+            android:importantForAutofill="no"
+            android:text="@string/stopped"
+            android:textColor="@android:color/darker_gray"
+            android:textIsSelectable="true"
+            android:textSize="20sp"
+            tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
 
         <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1">
+
+                <Button
+                    android:id="@+id/copy_btn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="start"
+                    android:text="@string/copy" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/switch_label"
@@ -41,7 +111,8 @@
                 android:layout_height="match_parent"
                 android:gravity="center"
                 android:text="@string/switch_text"
-                android:textColor="@android:color/black" />
+                android:textColor="@android:color/black"
+                android:textSize="18sp" />
 
             <com.suke.widget.SwitchButton
                 android:id="@+id/switch_btn"
@@ -52,82 +123,44 @@
                 tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck,VisualLintBounds" />
         </LinearLayout>
 
-    </LinearLayout>
+    </ir.programmerplus.groupbox.GroupBoxLayout>
 
-    <LinearLayout
+    <ir.programmerplus.groupbox.GroupBoxLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="end"
-        android:orientation="horizontal">
+        android:layout_margin="5dp"
+        android:layoutDirection="ltr"
+        android:padding="11dp"
+        app:borderColor="@android:color/darker_gray"
+        app:borderCornerRadius="8dp"
+        app:borderStrokeWidth="2.2dp"
+        app:labelText="@string/logs"
+        app:labelTextSize="15dp">
 
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
+            android:gravity="end"
             android:orientation="vertical">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="end"
-                android:paddingTop="5dp"
-                android:text="@string/audio_type" />
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
 
-            <TextView
-                android:id="@+id/rtsp_url"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
-                android:gravity="center"
-                android:importantForAutofill="no"
-                android:textColor="@android:color/holo_green_dark"
-                android:textIsSelectable="true"
-                android:textSize="20sp"
-                tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
+                <TextView
+                    android:id="@+id/log_view"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </ScrollView>
 
             <Button
-                android:id="@+id/copy_btn"
+                android:id="@+id/report"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="start"
-                android:text="@string/copy" />
+                android:text="@string/report" />
 
         </LinearLayout>
 
-        <RadioGroup
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content">
-
-            <RadioButton
-                android:id="@+id/audio_system"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true"
-                android:text="@string/audio_system" />
-
-            <RadioButton
-                android:id="@+id/audio_mic"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/audio_mic" />
-        </RadioGroup>
-    </LinearLayout>
-
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:importantForAutofill="no"
-        android:text="@string/logs" />
-
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-        <TextView
-            android:id="@+id/log_view"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-    </ScrollView>
-
+    </ir.programmerplus.groupbox.GroupBoxLayout>
 </LinearLayout>

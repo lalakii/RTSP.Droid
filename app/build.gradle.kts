@@ -11,8 +11,8 @@ android {
         applicationId = packageName
         minSdk = 33
         targetSdk = 35
-        versionCode = 5
-        versionName = "5.0"
+        versionCode = 6
+        versionName = "6.0"
     }
     signingConfigs {
         create("release") {
@@ -48,6 +48,7 @@ android {
     }
 }
 dependencies {
+    implementation("com.github.homayoonahmadi:GroupBoxLayout:1.2.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.github.zcweng:switch-button:0.0.3@aar")
     //noinspection GradleDependency

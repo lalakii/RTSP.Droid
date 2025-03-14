@@ -10,9 +10,11 @@ import android.Manifest;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
+import android.graphics.Paint;
 import android.media.MediaCodec;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
@@ -24,14 +26,12 @@ import android.view.WindowManager;
 import android.widget.RemoteViews;
 import android.widget.TextView;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationChannelCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
-import com.pedro.common.ConnectChecker;
 import com.pedro.rtspserver.RtspServer;
 
 import cn.lalaki.rtsp_android_example.util.AACAudioRecorder;
@@ -41,8 +41,8 @@ import cn.lalaki.rtsp_android_example.util.HEVCVideoRecorder;
  * @author lalakii    -     i@lalaki.cn
  */
 
-public class SLService extends Service implements ConnectChecker, MainActivity.OnRecordingEvent {
-    private RtspServer mRtspServer;
+public class SLService extends Service implements MainActivity.OnRecordingEvent {
+    private static RtspServer mRtspServer;
     private View mFloatView;
     private String mRtspUrl;
     private Notification mNotify;
@@ -55,28 +55,43 @@ public class SLService extends Service implements ConnectChecker, MainActivity.O
     private HEVCVideoRecorder mHEVCVideoRecorder;
     public static final int USE_PORT = 12345;
     private static final MediaCodec.BufferInfo mBufferInfo = new MediaCodec.BufferInfo();
+    private MainApp mMainApp;
 
     @Override
     public void onCreate() {
         super.onCreate();
-        mRtspServer = new RtspServer(this, USE_PORT);
-        mRtspServer.setLogs(false);
+        Context appContext = getApplicationContext();
+        if (appContext instanceof MainApp) {
+            mMainApp = (MainApp) appContext;
+        }
+        if (mRtspServer == null) {
+            mRtspServer = new RtspServer(mMainApp, USE_PORT);
+            mRtspServer.setLogs(false);
+            mRtspServer.setAudioInfo(SAMPLE_RATE, false);
+            mRtspServer.setAuth("", "");
+            mRtspServer.startServer();
+        }
         mRtspUrl = String.format("rtsp://%s:%s", mRtspServer.getServerIp(), mRtspServer.getPort());
-        mRtspServer.setAudioInfo(SAMPLE_RATE, false);
-        mRtspServer.setAuth("", "");
-        mRtspServer.startServer();
         mNotifyView = new RemoteViews(getPackageName(), R.layout.notify);
-        mNotifyView.setOnClickPendingIntent(R.id.tv1, PendingIntent.getActivity(getApplicationContext(), 1, new Intent(getApplicationContext(), MainActivity.class), FLAG_UPDATE_CURRENT | FLAG_IMMUTABLE));
-        mNotify = new NotificationCompat.Builder(this, getString(R.string.channel_id)).setContentText(mRtspUrl).setCustomContentView(mNotifyView).setWhen(System.currentTimeMillis()).setSmallIcon(android.R.drawable.presence_video_online).setVisibility(NotificationCompat.VISIBILITY_PUBLIC).setOngoing(true).build();
-        NotificationManagerCompat.from(this).createNotificationChannel(new NotificationChannelCompat.Builder(mNotify.getChannelId(), IMPORTANCE_HIGH).setName(getString(R.string.app_name)).setDescription(getString(R.string.app_name)).setSound(null, null).setLightsEnabled(false).setShowBadge(false).setVibrationEnabled(false).build());
+        mNotifyView.setOnClickPendingIntent(R.id.tv1, PendingIntent.getActivity(getApplicationContext(), 1, getPackageManager().getLaunchIntentForPackage(getPackageName()), FLAG_UPDATE_CURRENT | FLAG_IMMUTABLE));
+        mNotify = new NotificationCompat.Builder(mMainApp, getString(R.string.channel_id)).setContentText(mRtspUrl).setCustomContentView(mNotifyView).setWhen(System.currentTimeMillis()).setSmallIcon(android.R.drawable.presence_video_online).setVisibility(NotificationCompat.VISIBILITY_PUBLIC).setOngoing(true).build();
+        NotificationManagerCompat.from(mMainApp).createNotificationChannel(new NotificationChannelCompat.Builder(mNotify.getChannelId(), IMPORTANCE_HIGH).setName(getString(R.string.app_name)).setDescription(getString(R.string.app_name)).setSound(null, null).setLightsEnabled(false).setShowBadge(false).setVibrationEnabled(false).build());
         startForeground(1, mNotify, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
     }
 
-    public void onRecord(MediaProjectionManager mediaProjection, Handler mHandler, int resultCode, Intent data, WindowManager windowManager, View floatView, WindowManager.LayoutParams layoutParams, boolean isMic, TextView tv, TextView log) {
+    public boolean isRunning() {
+        return mHEVCVideoRecorder.getMRunning();
+    }
+
+    public void onRestore(TextView rtspUrlView) {
+        showNotify(mRtspUrl, rtspUrlView, true);
+    }
+
+    public void onRecord(MediaProjectionManager mediaProjection, Handler mHandler, int resultCode, Intent data, WindowManager windowManager, View floatView, WindowManager.LayoutParams layoutParams, boolean isMic, TextView rtspUrlView, TextView logView) {
         this.mWindowManager = windowManager;
         this.mLayoutParams = layoutParams;
         this.mFloatView = floatView;
-        this.mRtspUrlView = tv;
+        this.mRtspUrlView = rtspUrlView;
         this.mMediaProjection = mediaProjection.getMediaProjection(resultCode, data);
         this.mMediaProjection.registerCallback(new MediaProjection.Callback() {
             @Override
@@ -94,13 +109,19 @@ public class SLService extends Service implements ConnectChecker, MainActivity.O
                 super.onCapturedContentVisibilityChanged(isVisible);
             }
         }, mHandler);
-        showNotify(mRtspUrl, tv, true);
-        beginRecorder(isMic, log);
+        showNotify(mRtspUrl, rtspUrlView, true);
+        beginRecorder(isMic, logView);
     }
 
     private void showNotify(String text, TextView tv, boolean state) {
         if (tv != null) {
-            tv.setText(state ? mRtspUrl : "");
+            tv.setText(state ? mRtspUrl : getText(R.string.stopped));
+            tv.setTextColor(getColor(state ? R.color.blue : android.R.color.darker_gray));
+            if (state) {
+                tv.setPaintFlags(tv.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
+            } else {
+                tv.setPaintFlags(tv.getPaintFlags() & ~Paint.UNDERLINE_TEXT_FLAG);
+            }
         }
         mNotifyView.setTextViewText(R.id.tv1, text);
         mNotifyView.setTextColor(R.id.tv1, getColor(state ? android.R.color.holo_green_dark : android.R.color.darker_gray));
@@ -112,11 +133,11 @@ public class SLService extends Service implements ConnectChecker, MainActivity.O
         }
     }
 
-    private void beginRecorder(boolean isMic, TextView log) {
+    private void beginRecorder(boolean isMic, TextView logView) {
         if (Settings.canDrawOverlays(this) && !mFloatView.isAttachedToWindow()) {
             mWindowManager.addView(mFloatView, mLayoutParams);
         }
-        HEVCVideoRecorder hevcVideoRecorder = new HEVCVideoRecorder(mMediaProjection, log);
+        HEVCVideoRecorder hevcVideoRecorder = new HEVCVideoRecorder(mMediaProjection, logView);
         mAACAudioRecorder = new AACAudioRecorder(this, mMediaProjection, mBufferInfo, isMic);
         hevcVideoRecorder.start(mRtspServer, mAACAudioRecorder, mBufferInfo, mFloatView);
         mHEVCVideoRecorder = hevcVideoRecorder;
@@ -148,37 +169,5 @@ public class SLService extends Service implements ConnectChecker, MainActivity.O
     @Override
     public IBinder onBind(Intent intent) {
         return new SLBinder(this);
-    }
-
-    @Override
-    public void onAuthError() {
-
-    }
-
-    @Override
-    public void onAuthSuccess() {
-
-    }
-
-    @Override
-    public void onConnectionFailed(@NonNull String s) {
-    }
-
-    @Override
-    public void onConnectionStarted(@NonNull String s) {
-
-    }
-
-    @Override
-    public void onConnectionSuccess() {
-    }
-
-    @Override
-    public void onDisconnect() {
-
-    }
-
-    @Override
-    public void onNewBitrate(long l) {
     }
 }

@@ -14,16 +14,16 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import kotlin.concurrent.thread
 
-class HEVCVideoRecorder(mMediaProjection: MediaProjection, var log: TextView) {
+class HEVCVideoRecorder(mMediaProjection: MediaProjection, var logView: TextView) {
     private var mVirtualDisplay: VirtualDisplay? = null
     private var mSurface: Surface? = null
     private var mHevcEncoder: MediaCodec? = null
-    private var mRunning = false
+    var mRunning = false
 
     init {
         val width = 720
         val height = 1280
-        log.append(String.format("pixel: w:%s, h:%s\n", width, height))
+        logView.append(String.format("Pixel: w:%s, h:%s\n", width, height))
         val videoFormat =
             MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_HEVC, width, height)
         videoFormat.setInteger(
@@ -52,13 +52,13 @@ class HEVCVideoRecorder(mMediaProjection: MediaProjection, var log: TextView) {
                 null
             )
         } catch (e: IllegalStateException) {
-            log.append(e.localizedMessage)
+            logView.append(e.localizedMessage)
         } catch (e: IOException) {
-            log.append(e.localizedMessage)
+            logView.append(e.localizedMessage)
         } catch (e: IOException) {
-            log.append(e.localizedMessage)
+            logView.append(e.localizedMessage)
         } catch (e: SecurityException) {
-            log.append(e.localizedMessage)
+            logView.append(e.localizedMessage)
         }
     }
 
@@ -125,7 +125,9 @@ class HEVCVideoRecorder(mMediaProjection: MediaProjection, var log: TextView) {
                     }
                 }
             } catch (e: IllegalStateException) {
-                log.append(e.localizedMessage)
+                logView.post {
+                    logView.append(e.localizedMessage)
+                }
             }
             stop()
         }
@@ -140,8 +142,8 @@ class HEVCVideoRecorder(mMediaProjection: MediaProjection, var log: TextView) {
         }
         mSurface?.release()
         mVirtualDisplay?.release()
-        log.post {
-            log.append("All objects are released.\n")
+        logView.post {
+            logView.append("All objects are released.\n")
         }
     }
 

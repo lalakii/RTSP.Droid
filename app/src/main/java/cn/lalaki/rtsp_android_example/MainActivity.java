@@ -5,11 +5,9 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.graphics.Color;
 import android.media.projection.MediaProjectionConfig;
 import android.media.projection.MediaProjectionManager;
@@ -17,13 +15,13 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.IBinder;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -41,10 +39,9 @@ import com.suke.widget.SwitchButton;
 
 import java.net.URISyntaxException;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener, DialogInterface.OnClickListener, ActivityResultCallback<ActivityResult>, SwitchButton.OnCheckedChangeListener, ServiceConnection {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, DialogInterface.OnClickListener, ActivityResultCallback<ActivityResult>, SwitchButton.OnCheckedChangeListener {
 
     private Handler mHandler;
-    private OnRecordingEvent mEvent;
     private TextView mSwitchLabel;
     private SwitchButton mSwitchBtn;
     private ActivityResultLauncher<Intent> startActivityForResult;
@@ -54,10 +51,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private WindowManager mWindowManager;
     public int mResultCode;
     public ActivityResult mResult;
-    private TextView mRtspUrlView;
+    TextView mRtspUrlView;
     private final String[] mPermissions = new String[]{Manifest.permission.POST_NOTIFICATIONS, Manifest.permission.RECORD_AUDIO};
     private ClipboardManager mClipboardManager;
     private RadioButton mRadioButton;
+    private MainApp mMainApp;
+    boolean mServiceIsBound = false;
     private final WindowManager.LayoutParams mLayoutParams = new WindowManager.LayoutParams() {
         {
             width = MATCH_PARENT;
@@ -75,6 +74,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
+        Context appContext = getApplicationContext();
+        if (appContext instanceof MainApp) {
+            mMainApp = (MainApp) appContext;
+            mMainApp.setMActivity(this);
+        }
         mRadioButton = findViewById(R.id.audio_mic);
         mRtspUrlView = findViewById(R.id.rtsp_url);
         mFloatView = new View(this);
@@ -94,11 +98,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         startActivityForResult = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), this);
         mSwitchLabel = findViewById(R.id.switch_label);
         mSwitchBtn = findViewById(R.id.switch_btn);
+        findViewById(R.id.report).setOnClickListener(this);
+        Button copyBtn = findViewById(R.id.copy_btn);
+        copyBtn.setOnClickListener(this);
+        OnRecordingEvent event = mMainApp.getMEvent();
+        if (event != null && event.isRunning()) {
+            event.onRestore(mRtspUrlView);
+            mSwitchBtn.setChecked(true);
+        }
         mSwitchBtn.setOnCheckedChangeListener(this);
-        findViewById(R.id.copy_btn).setOnClickListener(this);
     }
 
-    private void startRecord(OnRecordingEvent event) {
+    public void startRecord(OnRecordingEvent event) {
         if (event != null) {
             boolean isMic = mRadioButton.isChecked();
             event.onRecord(mMediaProjectionManager, mHandler, mResultCode, mResult.getData(), mWindowManager, mFloatView, mLayoutParams, isMic, mRtspUrlView, mLogView);
@@ -112,8 +123,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (resultCode == Activity.RESULT_OK) {
             mResultCode = resultCode;
             mResult = result;
-            bindService(new Intent(this, SLService.class), this, Context.BIND_AUTO_CREATE);
-            startRecord(mEvent);
+            bindService(new Intent(mMainApp, SLService.class), mMainApp, Context.BIND_AUTO_CREATE);
+            if (mServiceIsBound) {
+                startRecord(mMainApp.getMEvent());
+            }
         } else {
             mSwitchBtn.setChecked(false);
         }
@@ -132,7 +145,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
                 startActivityForResult.launch(captureIntent);
             } else {
-                OnRecordingEvent event = mEvent;
+                OnRecordingEvent event = mMainApp.getMEvent();
                 if (event != null) {
                     event.onRelease();
                 } else {
@@ -140,12 +153,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
             }
         }
-    }
-
-    @Override
-    public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-        mEvent = ((SLBinder) iBinder).getMContext();
-        startRecord(mEvent);
     }
 
     @Override
@@ -173,23 +180,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     @Override
-    public void onServiceDisconnected(ComponentName componentName) {
-
-    }
-
-    @Override
     public void onClick(View v) {
-        String text = mRtspUrlView.getText().toString().trim();
-        if (!text.isEmpty()) {
-            mClipboardManager.setPrimaryClip(ClipData.newPlainText(getText(R.string.app_name), text));
-            Toast.makeText(this, R.string.copy_ok, Toast.LENGTH_SHORT).show();
+        if (v.getId() == R.id.report) {
+            startActivity(new Intent().setAction(Intent.ACTION_VIEW).setData(Uri.parse(getString(R.string.issues_url))));
+        } else {
+            String text = mRtspUrlView.getText().toString().trim();
+            if (!text.isEmpty()) {
+                mClipboardManager.setPrimaryClip(ClipData.newPlainText(getText(R.string.app_name), text));
+                Toast.makeText(this, R.string.copy_ok, Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
-
     public interface OnRecordingEvent {
-        void onRecord(MediaProjectionManager mMediaProjectionManager, Handler mHandler, int resultCode, Intent data, WindowManager windowManager, View floatView, WindowManager.LayoutParams layoutParams, boolean isMic, TextView tv, TextView log);
+        void onRecord(MediaProjectionManager mMediaProjectionManager, Handler mHandler, int resultCode, Intent data, WindowManager windowManager, View floatView, WindowManager.LayoutParams layoutParams, boolean isMic, TextView rtspUrlView, TextView logView);
 
         void onRelease();
+
+        boolean isRunning();
+
+        void onRestore(TextView rtspUrlView);
     }
 }
