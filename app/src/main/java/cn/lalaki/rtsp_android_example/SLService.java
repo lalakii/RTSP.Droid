@@ -8,6 +8,7 @@ import static cn.lalaki.rtsp_android_example.util.AACAudioRecorder.SAMPLE_RATE;
 
 import android.Manifest;
 import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
@@ -56,6 +57,9 @@ public class SLService extends Service implements MainActivity.OnRecordingEvent 
     public static final int USE_PORT = 12345;
     private static final MediaCodec.BufferInfo mBufferInfo = new MediaCodec.BufferInfo();
     private MainApp mMainApp;
+    private NotificationManager mNotificationManager;
+    private static final int NOTIFY_ID = 1;
+    public boolean mIsMic = false;
 
     @Override
     public void onCreate() {
@@ -72,11 +76,12 @@ public class SLService extends Service implements MainActivity.OnRecordingEvent 
             mRtspServer.startServer();
         }
         mRtspUrl = String.format("rtsp://%s:%s", mRtspServer.getServerIp(), mRtspServer.getPort());
+        mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         mNotifyView = new RemoteViews(getPackageName(), R.layout.notify);
         mNotifyView.setOnClickPendingIntent(R.id.tv1, PendingIntent.getActivity(getApplicationContext(), 1, getPackageManager().getLaunchIntentForPackage(getPackageName()), FLAG_UPDATE_CURRENT | FLAG_IMMUTABLE));
         mNotify = new NotificationCompat.Builder(mMainApp, getString(R.string.channel_id)).setContentText(mRtspUrl).setCustomContentView(mNotifyView).setWhen(System.currentTimeMillis()).setSmallIcon(android.R.drawable.presence_video_online).setVisibility(NotificationCompat.VISIBILITY_PUBLIC).setOngoing(true).build();
         NotificationManagerCompat.from(mMainApp).createNotificationChannel(new NotificationChannelCompat.Builder(mNotify.getChannelId(), IMPORTANCE_HIGH).setName(getString(R.string.app_name)).setDescription(getString(R.string.app_name)).setSound(null, null).setLightsEnabled(false).setShowBadge(false).setVibrationEnabled(false).build());
-        startForeground(1, mNotify, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
+        startMediaProjectionForeground();
     }
 
     public boolean isRunning() {
@@ -113,6 +118,13 @@ public class SLService extends Service implements MainActivity.OnRecordingEvent 
         beginRecorder(isMic, logView);
     }
 
+    private void startMediaProjectionForeground() {
+        try {
+            startForeground(NOTIFY_ID, mNotify, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
+        } catch (SecurityException ignored) {
+        }
+    }
+
     private void showNotify(String text, TextView tv, boolean state) {
         if (tv != null) {
             tv.setText(state ? mRtspUrl : getText(R.string.stopped));
@@ -125,20 +137,21 @@ public class SLService extends Service implements MainActivity.OnRecordingEvent 
         }
         mNotifyView.setTextViewText(R.id.tv1, text);
         mNotifyView.setTextColor(R.id.tv1, getColor(state ? android.R.color.holo_green_dark : android.R.color.darker_gray));
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION) == PackageManager.PERMISSION_GRANTED) {
-            try {
-                startForeground(1, mNotify, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
-            } catch (SecurityException ignored) {
-            }
+        if (ActivityCompat.checkSelfPermission(mMainApp, Manifest.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION) == PackageManager.PERMISSION_GRANTED) {
+            startMediaProjectionForeground();
+        }
+        if (!state) {
+            mNotificationManager.notify(NOTIFY_ID, mNotify);
         }
     }
 
     private void beginRecorder(boolean isMic, TextView logView) {
-        if (Settings.canDrawOverlays(this) && !mFloatView.isAttachedToWindow()) {
+        if (Settings.canDrawOverlays(mMainApp) && !mFloatView.isAttachedToWindow()) {
             mWindowManager.addView(mFloatView, mLayoutParams);
         }
+        mIsMic = isMic;
         HEVCVideoRecorder hevcVideoRecorder = new HEVCVideoRecorder(mMediaProjection, logView);
-        mAACAudioRecorder = new AACAudioRecorder(this, mMediaProjection, mBufferInfo, isMic);
+        mAACAudioRecorder = new AACAudioRecorder(mMainApp, mMediaProjection, mBufferInfo, isMic);
         hevcVideoRecorder.start(mRtspServer, mAACAudioRecorder, mBufferInfo, mFloatView);
         mHEVCVideoRecorder = hevcVideoRecorder;
     }
@@ -163,6 +176,11 @@ public class SLService extends Service implements MainActivity.OnRecordingEvent 
             windowManager.removeView(floatView);
         }
         showNotify(getString(R.string.stopped), mRtspUrlView, false);
+    }
+
+    @Override
+    public boolean isMic() {
+        return mIsMic;
     }
 
     @Nullable

@@ -1,6 +1,5 @@
 package cn.lalaki.rtsp_android_example;
 
-import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ClipData;
@@ -16,7 +15,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.Settings;
-import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -41,34 +39,18 @@ import java.net.URISyntaxException;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener, DialogInterface.OnClickListener, ActivityResultCallback<ActivityResult>, SwitchButton.OnCheckedChangeListener {
 
-    private Handler mHandler;
     private TextView mSwitchLabel;
     private SwitchButton mSwitchBtn;
+    private ClipboardManager mClipboardManager;
     private ActivityResultLauncher<Intent> startActivityForResult;
-    public MediaProjectionManager mMediaProjectionManager;
     private TextView mLogView;
     private View mFloatView;
-    private WindowManager mWindowManager;
     public int mResultCode;
-    public ActivityResult mResult;
     TextView mRtspUrlView;
-    private final String[] mPermissions = new String[]{Manifest.permission.POST_NOTIFICATIONS, Manifest.permission.RECORD_AUDIO};
-    private ClipboardManager mClipboardManager;
-    private RadioButton mRadioButton;
     private MainApp mMainApp;
+    public ActivityResult mResult;
     boolean mServiceIsBound = false;
-    private final WindowManager.LayoutParams mLayoutParams = new WindowManager.LayoutParams() {
-        {
-            width = MATCH_PARENT;
-            height = MATCH_PARENT;
-            x = 0;
-            y = 0;
-            alpha = 0;
-            gravity = Gravity.LEFT | Gravity.BOTTOM;
-            type = TYPE_APPLICATION_OVERLAY;
-            flags = FLAG_NOT_FOCUSABLE | FLAG_NOT_TOUCH_MODAL | FLAG_NOT_TOUCHABLE | FLAG_LAYOUT_NO_LIMITS;
-        }
-    };
+    private RadioButton mRadioButton;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -85,25 +67,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mFloatView.setBackgroundColor(Color.RED);
         mLogView = findViewById(R.id.log_view);
         mClipboardManager = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-        mMediaProjectionManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
-        ActivityCompat.requestPermissions(this, mPermissions, 0x233);
+        ActivityCompat.requestPermissions(this, mMainApp.getMRequestPermissions(), 0x233);
         if (!Settings.canDrawOverlays(this)) {
             AlertDialog floatWindowTips = new AlertDialog.Builder(this).setPositiveButton(R.string.confirm, this).setNegativeButton(R.string.cancel, this).create();
             floatWindowTips.setTitle(R.string.float_title);
             floatWindowTips.setMessage(getString(R.string.float_permission));
             floatWindowTips.show();
         }
-        mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-        mHandler = new Handler(this.getMainLooper());
         startActivityForResult = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), this);
         mSwitchLabel = findViewById(R.id.switch_label);
         mSwitchBtn = findViewById(R.id.switch_btn);
         findViewById(R.id.report).setOnClickListener(this);
+        findViewById(R.id.clear_all).setOnClickListener(this);
+        findViewById(R.id.force_exit).setOnClickListener(this);
         Button copyBtn = findViewById(R.id.copy_btn);
         copyBtn.setOnClickListener(this);
         OnRecordingEvent event = mMainApp.getMEvent();
         if (event != null && event.isRunning()) {
             event.onRestore(mRtspUrlView);
+            mRadioButton.setChecked(event.isMic());
             mSwitchBtn.setChecked(true);
         }
         mSwitchBtn.setOnCheckedChangeListener(this);
@@ -112,7 +94,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void startRecord(OnRecordingEvent event) {
         if (event != null) {
             boolean isMic = mRadioButton.isChecked();
-            event.onRecord(mMediaProjectionManager, mHandler, mResultCode, mResult.getData(), mWindowManager, mFloatView, mLayoutParams, isMic, mRtspUrlView, mLogView);
+            event.onRecord(mMainApp.getMMediaProjectionManager(), mMainApp.getMHandler(), mResultCode, mResult.getData(), mMainApp.getMWindowManager(), mFloatView, mMainApp.getMLayoutParams(), isMic, mRtspUrlView, mLogView);
             mLogView.append("The service has been bound, recording screen...\n");
         }
     }
@@ -139,9 +121,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if (b) {
                 Intent captureIntent;
                 if (Build.VERSION.SDK_INT > Build.VERSION_CODES.TIRAMISU) {
-                    captureIntent = mMediaProjectionManager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay());
+                    captureIntent = mMainApp.getMMediaProjectionManager().createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay());
                 } else {
-                    captureIntent = mMediaProjectionManager.createScreenCaptureIntent();
+                    captureIntent = mMainApp.getMMediaProjectionManager().createScreenCaptureIntent();
                 }
                 startActivityForResult.launch(captureIntent);
             } else {
@@ -181,11 +163,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void onClick(View v) {
-        if (v.getId() == R.id.report) {
-            startActivity(new Intent().setAction(Intent.ACTION_VIEW).setData(Uri.parse(getString(R.string.issues_url))));
+        int id = v.getId();
+        if (id == R.id.report) {
+            startActivity(new Intent(Intent.ACTION_VIEW).setData(Uri.parse(getString(R.string.issues_url))));
+        } else if (id == R.id.clear_all) {
+            mLogView.setText("");
+        } else if (id == R.id.force_exit) {
+            System.exit(0);
         } else {
             String text = mRtspUrlView.getText().toString().trim();
-            if (!text.isEmpty()) {
+            if (text.toLowerCase().startsWith("rtsp")) {
                 mClipboardManager.setPrimaryClip(ClipData.newPlainText(getText(R.string.app_name), text));
                 Toast.makeText(this, R.string.copy_ok, Toast.LENGTH_SHORT).show();
             }
@@ -198,6 +185,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         void onRelease();
 
         boolean isRunning();
+
+        boolean isMic();
 
         void onRestore(TextView rtspUrlView);
     }
