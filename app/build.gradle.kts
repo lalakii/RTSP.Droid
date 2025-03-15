@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.kapt")
 }
 val javaVersion = JavaVersion.VERSION_21
 val packageName = "cn.lalaki.rtsp_android_example"
@@ -11,8 +12,8 @@ android {
         applicationId = packageName
         minSdk = 33
         targetSdk = 35
-        versionCode = 7
-        versionName = "7.0"
+        versionCode = 8
+        versionName = "8.0"
     }
     signingConfigs {
         create("release") {
@@ -28,6 +29,7 @@ android {
             isShrinkResources = true
             isDebuggable = false
             isJniDebuggable = false
+            renderscriptOptimLevel = 3
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -46,11 +48,15 @@ android {
     kotlinOptions {
         jvmTarget = "21"
     }
+    buildFeatures {
+        dataBinding = true
+    }
 }
 dependencies {
-    implementation("com.github.homayoonahmadi:GroupBoxLayout:1.2.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("info.hoang8f:fbutton:1.0.5")
     implementation("com.github.zcweng:switch-button:0.0.3@aar")
+    implementation("com.github.homayoonahmadi:GroupBoxLayout:1.2.0")
     //noinspection GradleDependency
     implementation("com.github.pedroSG94.RootEncoder:library:2.3.5")
     //noinspection GradleDependency

@@ -19,7 +19,7 @@ import com.pedro.rtspserver.RtspServer
 import java.io.IOException
 import java.nio.ByteBuffer
 
-class AACAudioRecorder(
+open class AACAudioRecorder(
     context: Context,
     mMediaProjection: MediaProjection,
     var mBufferInfo: MediaCodec.BufferInfo,
@@ -82,7 +82,7 @@ class AACAudioRecorder(
         }
     }
 
-    fun sendAacBuffer(rtspServer: RtspServer, timestamp: Long) {
+    open fun sendAacBuffer(rtspServer: RtspServer, timestamp: Long) {
         val audioRecord = mAudioRecord
         if (audioRecord != null) {
             val audioRawByteBuffer = ByteBuffer.allocateDirect(minBufferSize)
@@ -117,7 +117,7 @@ class AACAudioRecorder(
         }
     }
 
-    fun release() {
+    open fun release() {
         val audioRecord = mAudioRecord
         if (audioRecord != null) {
             try {

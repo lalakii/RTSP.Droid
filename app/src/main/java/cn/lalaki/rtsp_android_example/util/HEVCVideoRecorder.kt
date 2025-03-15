@@ -14,7 +14,7 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import kotlin.concurrent.thread
 
-class HEVCVideoRecorder(mMediaProjection: MediaProjection, var logView: TextView) {
+open class HEVCVideoRecorder(mMediaProjection: MediaProjection, var logView: TextView) {
     private var mVirtualDisplay: VirtualDisplay? = null
     private var mSurface: Surface? = null
     private var mHevcEncoder: MediaCodec? = null
@@ -62,12 +62,12 @@ class HEVCVideoRecorder(mMediaProjection: MediaProjection, var logView: TextView
         }
     }
 
-    private fun csd0Handler(csdBuf: ByteArray, rtspServer: RtspServer) {
+    private fun csd0Handler(data: ByteArray, rtspServer: RtspServer) {
         var segment = 0
         var ppsPosition = -1
         var spsPosition = -1
-        for (i in csdBuf.size - 1 downTo 0) {
-            if (segment == 3 && csdBuf[i + 4] == 1.toByte()) {
+        for (i in data.size - 1 downTo 0) {
+            if (segment == 3 && data[i + 4] == 1.toByte()) {
                 if (ppsPosition == -1) {
                     ppsPosition = i + 1
                 } else {
@@ -75,19 +75,21 @@ class HEVCVideoRecorder(mMediaProjection: MediaProjection, var logView: TextView
                     break
                 }
             }
-            segment = if (csdBuf[i] == 0.toByte()) segment + 1 else 0
+            segment = if (data[i] == 0.toByte()) {
+                segment + 1
+            } else {
+                0
+            }
         }
-        val vps = ByteBuffer.allocate(spsPosition).put(csdBuf, 0, spsPosition)
-        val sps = ByteBuffer.allocate(ppsPosition - spsPosition).put(
-            csdBuf, spsPosition, ppsPosition - spsPosition
-        )
-        val pps = ByteBuffer.allocate(csdBuf.size - ppsPosition).put(
-            csdBuf, ppsPosition, csdBuf.size - ppsPosition
-        )
+        val vps = ByteBuffer.allocate(spsPosition).put(data, 0, spsPosition)
+        val spsSize = ppsPosition - spsPosition
+        val sps = ByteBuffer.allocate(spsSize).put(data, spsPosition, spsSize)
+        val ppsSize = data.size - ppsPosition
+        val pps = ByteBuffer.allocate(ppsSize).put(data, ppsPosition, ppsSize)
         rtspServer.setVideoInfo(sps, pps, vps)
     }
 
-    fun start(
+    open fun start(
         rtspServer: RtspServer,
         aacAudioRecorder: AACAudioRecorder?,
         bufferInfo: MediaCodec.BufferInfo,
@@ -96,9 +98,9 @@ class HEVCVideoRecorder(mMediaProjection: MediaProjection, var logView: TextView
         thread {
             mRunning = true
             try {
-                val beginTime = System.nanoTime()
                 val hevcEncoder = mHevcEncoder
                 if (hevcEncoder != null) {
+                    val beginTime = System.nanoTime()
                     while (mRunning) {
                         val timestamp = (System.nanoTime() - beginTime) / 1000L
                         aacAudioRecorder?.sendAacBuffer(rtspServer, timestamp)
@@ -133,7 +135,7 @@ class HEVCVideoRecorder(mMediaProjection: MediaProjection, var logView: TextView
         }
     }
 
-    fun stop() {
+    private fun stop() {
         val hevcEncoder = mHevcEncoder
         if (hevcEncoder != null) {
             hevcEncoder.stop()
@@ -147,7 +149,7 @@ class HEVCVideoRecorder(mMediaProjection: MediaProjection, var logView: TextView
         }
     }
 
-    fun release() {
+    open fun release() {
         mRunning = false
     }
 }

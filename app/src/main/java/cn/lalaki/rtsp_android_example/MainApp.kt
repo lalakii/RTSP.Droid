@@ -7,22 +7,32 @@ import android.media.projection.MediaProjectionManager
 import android.os.Handler
 import android.os.IBinder
 import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
 import android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
 import android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
 import android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
 import android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
 import android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+import androidx.activity.result.ActivityResult
+import cn.lalaki.rtsp_android_example.binder.SLBinder
+import cn.lalaki.rtsp_android_example.ui.MainActivity
 import com.pedro.common.ConnectChecker
 
 class MainApp : Application(), ServiceConnection, ConnectChecker {
-    var mEvent: MainActivity.OnRecordingEvent? = null
+    var mEvent: IRecordingEvent? = null
     var mActivity: MainActivity? = null
+    var mIsMic = false
+    var mResult: ActivityResult? = null
+    var mResultCode = -1
     val mRequestPermissions = arrayOf<String>(
         android.Manifest.permission.POST_NOTIFICATIONS, android.Manifest.permission.RECORD_AUDIO
     )
     val mHandler by lazy {
         Handler(mainLooper)
+    }
+    val mFloatView by lazy {
+        View(this)
     }
     val mLayoutParams: WindowManager.LayoutParams by lazy {
         WindowManager.LayoutParams().apply {
