@@ -21,8 +21,9 @@ open class HEVCVideoRecorder(mMediaProjection: MediaProjection, var logView: Tex
     var mRunning = false
 
     init {
-        val width = 720
-        val height = 1280
+        // 自行测试哪个分辨率可用
+        val width = 272
+        val height = 640
         logView.append(String.format("Pixel: w:%s, h:%s\n", width, height))
         val videoFormat =
             MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_HEVC, width, height)
@@ -51,6 +52,8 @@ open class HEVCVideoRecorder(mMediaProjection: MediaProjection, var logView: Tex
                 null,
                 null
             )
+        } catch (e: IllegalArgumentException) {
+            logView.append("出现此提示请尝试不同的分辨率！！！${e.localizedMessage}")
         } catch (e: IllegalStateException) {
             logView.append(e.localizedMessage)
         } catch (e: IOException) {
