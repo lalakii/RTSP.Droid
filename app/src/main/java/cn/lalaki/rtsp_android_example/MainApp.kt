@@ -28,6 +28,8 @@ class MainApp : Application(), ServiceConnection, ConnectChecker {
     val mRequestPermissions = arrayOf<String>(
         android.Manifest.permission.POST_NOTIFICATIONS, android.Manifest.permission.RECORD_AUDIO
     )
+    var mWidth = 0
+    var mHeight = 0
     val mHandler by lazy {
         Handler(mainLooper)
     }

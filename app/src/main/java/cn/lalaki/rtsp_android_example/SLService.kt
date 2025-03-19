@@ -194,7 +194,8 @@ class SLService : Service(), IRecordingEvent {
         val mainApp = mMainApp
         val rtspServer = mRtspServer
         if (mediaProjection != null && mainApp != null && rtspServer != null) {
-            val hevcVideoRecorder = HEVCVideoRecorder(mediaProjection, logView)
+            val hevcVideoRecorder =
+                HEVCVideoRecorder(mediaProjection, logView, mainApp.mWidth, mainApp.mHeight)
             mAACAudioRecorder = AACAudioRecorder(mainApp, mediaProjection, mBufferInfo, isMic)
             hevcVideoRecorder.start(rtspServer, mAACAudioRecorder, mBufferInfo, mFloatView)
             mHEVCVideoRecorder = hevcVideoRecorder

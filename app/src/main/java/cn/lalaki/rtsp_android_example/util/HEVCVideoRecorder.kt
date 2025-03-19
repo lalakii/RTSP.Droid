@@ -14,7 +14,12 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import kotlin.concurrent.thread
 
-open class HEVCVideoRecorder(mMediaProjection: MediaProjection, var logView: TextView) {
+open class HEVCVideoRecorder(
+    mMediaProjection: MediaProjection,
+    var logView: TextView,
+    var width: Int,
+    var height: Int
+) {
     private var mVirtualDisplay: VirtualDisplay? = null
     private var mSurface: Surface? = null
     private var mHevcEncoder: MediaCodec? = null
@@ -22,8 +27,6 @@ open class HEVCVideoRecorder(mMediaProjection: MediaProjection, var logView: Tex
 
     init {
         // 自行测试哪个分辨率可用
-        val width = 272
-        val height = 640
         logView.append(String.format("Pixel: w:%s, h:%s\n", width, height))
         val videoFormat =
             MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_HEVC, width, height)

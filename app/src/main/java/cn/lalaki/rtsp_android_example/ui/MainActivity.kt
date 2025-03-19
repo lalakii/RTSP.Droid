@@ -12,6 +12,7 @@ import android.provider.Settings
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultCallback
@@ -67,8 +68,14 @@ open class MainActivity : AppCompatActivity(), View.OnClickListener,
             floatWindowTips.setMessage(getString(R.string.float_permission))
             floatWindowTips.show()
         }
-        mBinding.forceExit.buttonColor = getColor(info.hoang8f.fbutton.R.color.fbutton_color_alizarin)
+        mBinding.forceExit.buttonColor =
+            getColor(info.hoang8f.fbutton.R.color.fbutton_color_alizarin)
         mBinding.report.buttonColor = getColor(info.hoang8f.fbutton.R.color.fbutton_color_green_sea)
+        mBinding.pixel.adapter = ArrayAdapter<String>(
+            this,
+            R.layout.item,
+            resources.getStringArray(R.array.pixels)
+        )
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -161,6 +168,9 @@ open class MainActivity : AppCompatActivity(), View.OnClickListener,
     fun startRecord(event: IRecordingEvent?) {
         if (event != null) {
             mMainApp.mIsMic = mBinding.audioMic.isChecked
+            val pixelArray = mBinding.pixel.selectedItem.toString().split("x")
+            mMainApp.mHeight = pixelArray[0].toInt()
+            mMainApp.mWidth = pixelArray[1].toInt()
             event.onRecord(mMainApp)
             mBinding.logView.append("The service has been bound, recording screen...\n")
         }

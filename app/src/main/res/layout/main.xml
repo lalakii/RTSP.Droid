@@ -21,9 +21,9 @@
                 android:padding="11dp"
                 app:borderColor="@android:color/darker_gray"
                 app:borderCornerRadius="8dp"
-                app:labelTextColor="@android:color/black"
                 app:borderStrokeWidth="2.2dp"
                 app:labelText="@string/tips_title"
+                app:labelTextColor="@android:color/black"
                 app:labelTextSize="15dp">
 
                 <TextView
@@ -39,13 +39,13 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_margin="5dp"
-                app:labelTextColor="@android:color/black"
                 android:layoutDirection="ltr"
                 android:padding="5dp"
                 app:borderColor="@android:color/darker_gray"
                 app:borderCornerRadius="8dp"
                 app:borderStrokeWidth="2.2dp"
                 app:labelText="@string/audio_type"
+                app:labelTextColor="@android:color/black"
                 app:labelTextSize="15dp">
 
                 <RadioGroup
@@ -76,12 +76,35 @@
                 android:layout_height="wrap_content"
                 android:layout_margin="5dp"
                 android:layoutDirection="ltr"
+                android:padding="5dp"
+                app:borderColor="@android:color/darker_gray"
+                app:borderCornerRadius="8dp"
+                app:borderStrokeWidth="2.2dp"
+                app:labelText="@string/video_pixel"
                 app:labelTextColor="@android:color/black"
+                app:labelTextSize="15dp">
+
+                <Spinner
+                    android:id="@+id/pixel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginEnd="8dp" />
+
+            </ir.programmerplus.groupbox.GroupBoxLayout>
+
+            <ir.programmerplus.groupbox.GroupBoxLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="5dp"
+                android:layoutDirection="ltr"
                 android:padding="11dp"
                 app:borderColor="@android:color/darker_gray"
                 app:borderCornerRadius="8dp"
                 app:borderStrokeWidth="2.2dp"
                 app:labelText="@string/publish"
+                app:labelTextColor="@android:color/black"
                 app:labelTextSize="15dp">
 
                 <TextView
@@ -143,12 +166,12 @@
                 android:layout_height="wrap_content"
                 android:layout_margin="5dp"
                 android:layoutDirection="ltr"
-                app:labelTextColor="@android:color/black"
                 android:padding="11dp"
                 app:borderColor="@android:color/darker_gray"
                 app:borderCornerRadius="8dp"
                 app:borderStrokeWidth="2.2dp"
                 app:labelText="@string/logs"
+                app:labelTextColor="@android:color/black"
                 app:labelTextSize="15dp">
 
                 <TextView
@@ -157,9 +180,9 @@
                     android:layout_height="wrap_content" />
 
                 <RelativeLayout
-                    android:gravity="end"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
+                    android:layout_height="wrap_content"
+                    android:gravity="end">
 
                     <info.hoang8f.widget.FButton
                         android:id="@+id/force_exit"

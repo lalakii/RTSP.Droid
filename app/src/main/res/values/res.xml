@@ -21,8 +21,9 @@
     <string name="report">报告BUG</string>
     <string name="publish">发布流</string>
     <string name="clear">清空日志</string>
+    <string name="video_pixel">选择一个分辨率(取决于设备是否兼容)</string>
     <string name="force_exit">结束进程</string>
-    <string name="tips">你可以使用VLC、MXPlayer播放器或者ffmpeg里面的ffplay命令来播放RTSP流。\n修改音频源后，重新启动服务才会生效。\n\nby lalaki.cn</string>
+    <string name="tips">你可以使用VLC、MXPlayer播放器或者ffmpeg里面的ffplay命令来播放RTSP流。\n修改分辨率或音频源后，重新启动服务才会生效。\n\nby lalaki.cn</string>
     <string name="float_permission">为了应用更好的运行，建议前往设置App授予悬浮窗权限。\n\n此权限不是必须的，不授予与此权限，应用依然能运行。</string>
 
     <style name="Custom" parent="@style/Theme.AppCompat.Light">
@@ -34,4 +35,14 @@
     </style>
 
     <color name="blue">#0000EE</color>
+
+    <string-array name="pixels">
+        <item>2560x1072</item>
+        <item>1920x800</item>
+        <item>1280x720</item>
+        <item>1280x528</item>
+        <item>960x400</item>
+        <item>720x304</item>
+        <item>640x272</item>
+    </string-array>
 </resources>
