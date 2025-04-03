@@ -19,7 +19,7 @@ import cn.lalaki.rtsp_android_example.binder.SLBinder
 import cn.lalaki.rtsp_android_example.ui.MainActivity
 import com.pedro.common.ConnectChecker
 
-class MainApp : Application(), ServiceConnection, ConnectChecker {
+class MainApp : Application(), ServiceConnection, ConnectChecker, IDispose {
     var mEvent: IRecordingEvent? = null
     var mActivity: MainActivity? = null
     var mIsMic = false
@@ -88,5 +88,12 @@ class MainApp : Application(), ServiceConnection, ConnectChecker {
     }
 
     override fun onNewBitrate(bitrate: Long) {
+    }
+
+    override fun onRelease() {
+        val btn = mActivity?.mBinding?.switchBtn
+        btn?.post {
+            btn.isChecked = false
+        }
     }
 }

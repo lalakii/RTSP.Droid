@@ -122,18 +122,21 @@ open class AACAudioRecorder(
         if (audioRecord != null) {
             try {
                 audioRecord.stop()
-                audioRecord.release()
             } catch (_: IllegalStateException) {
             }
+            audioRecord.release()
         }
         val aacEncoder = mAacEncoder
         if (aacEncoder != null) {
             try {
                 aacEncoder.stop()
-                aacEncoder.reset()
-                aacEncoder.release()
             } catch (_: IllegalStateException) {
             }
+            try {
+                aacEncoder.reset()
+            } catch (_: IllegalStateException) {
+            }
+            aacEncoder.release()
         }
     }
 }

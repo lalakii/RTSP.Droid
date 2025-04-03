@@ -37,12 +37,19 @@
     <color name="blue">#0000EE</color>
 
     <string-array name="pixels">
-        <item>2560x1072</item>
-        <item>1920x800</item>
+        <item>1920x1080</item>
+        <item>640x480</item>
+        <item>800x600</item>
+        <item>1024x768</item>
         <item>1280x720</item>
-        <item>1280x528</item>
-        <item>960x400</item>
-        <item>720x304</item>
-        <item>640x272</item>
+        <item>1280x800</item>
+        <item>1280x1024</item>
+        <item>1366x768</item>
+        <item>1440x900</item>
+        <item>1600x900</item>
+        <item>1680x1050</item>
+        <item>1920x1200</item>
+        <item>2560x1440</item>
     </string-array>
 </resources>
+

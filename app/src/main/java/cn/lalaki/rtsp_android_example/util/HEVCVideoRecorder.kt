@@ -9,16 +9,19 @@ import android.media.projection.MediaProjection
 import android.view.Surface
 import android.view.View
 import android.widget.TextView
+import cn.lalaki.rtsp_android_example.IDispose
+import cn.lalaki.rtsp_android_example.MainApp
 import com.pedro.rtspserver.RtspServer
 import java.io.IOException
 import java.nio.ByteBuffer
 import kotlin.concurrent.thread
+import kotlin.math.log
 
 open class HEVCVideoRecorder(
     mMediaProjection: MediaProjection,
     var logView: TextView,
-    var width: Int,
-    var height: Int
+    width: Int,
+    height: Int
 ) {
     private var mVirtualDisplay: VirtualDisplay? = null
     private var mSurface: Surface? = null
@@ -56,7 +59,7 @@ open class HEVCVideoRecorder(
                 null
             )
         } catch (e: IllegalArgumentException) {
-            logView.append("出现此提示请尝试不同的分辨率！！！${e.localizedMessage}")
+            logView.append(e.localizedMessage)
         } catch (e: IllegalStateException) {
             logView.append(e.localizedMessage)
         } catch (e: IOException) {
@@ -65,6 +68,10 @@ open class HEVCVideoRecorder(
             logView.append(e.localizedMessage)
         } catch (e: SecurityException) {
             logView.append(e.localizedMessage)
+        }
+        val virtualDisplay = mVirtualDisplay
+        if (virtualDisplay == null) {
+            logView.append("此分辨率可能不兼容，请尝试不同的分辨率！！！")
         }
     }
 
@@ -152,6 +159,11 @@ open class HEVCVideoRecorder(
         mVirtualDisplay?.release()
         logView.post {
             logView.append("All objects are released.\n")
+        }
+        mRunning = false
+        val appContext = logView.context.applicationContext
+        if (appContext is IDispose) {
+            appContext.onRelease()
         }
     }
 

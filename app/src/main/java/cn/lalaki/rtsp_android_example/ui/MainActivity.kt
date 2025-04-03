@@ -56,7 +56,7 @@ open class MainActivity : AppCompatActivity(), View.OnClickListener,
         if (event?.running() == true) {
             event.onRestore()
             mBinding.audioMic.setChecked(event.audioMic())
-            mBinding.switchBtn.setChecked(true)
+            mBinding.switchBtn.isChecked = true
         }
         mBinding.switchBtn.setOnCheckedChangeListener(this)
         ActivityCompat.requestPermissions(this, mMainApp.mRequestPermissions, 0x233)
